@@ -1,8 +1,3 @@
-// 1. Accept connection.
-// 2. Give back list of peers.
-// 3. Send connection's IP and port to other peers.
-// 4. Store connection's IP and port.
-
 #include "p2pnode.h"
 #include <iostream>
 #include <algorithm>
@@ -28,6 +23,10 @@ void P2PNode::handleConnection() {
     printPeers();
 
 	m_socket.close();
+}
+
+P2PNode::~P2PNode() {
+    closeConnection();
 }
 
 void P2PNode::handleAddRequest() {
@@ -82,6 +81,10 @@ void P2PNode::addPeer(std::string peer) {
 
 void P2PNode::remPeer(std::string peer) {
     m_peersList.erase(std::remove(m_peersList.begin(), m_peersList.end(), peer), m_peersList.end());
+}
+
+void P2PNode::closeConnection() {
+    m_socket.close();
 }
 
 const std::vector<std::string>& P2PNode::getPeersList() const {

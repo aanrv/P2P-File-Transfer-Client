@@ -2,6 +2,10 @@
 
 using boost::asio::ip::tcp;
 
+Peer::~Peer() {
+
+}
+
 void Peer::joinNetwork(std::string server, std::string service) {
     try {
         tcp::socket tmpSocket(m_ioService);
@@ -16,12 +20,9 @@ void Peer::joinNetwork(std::string server, std::string service) {
     } catch(std::exception& e) {
         std::cerr << e.what() << std::endl;
         std::cerr << "joinNetwork: Make sure the connection manager is running." << std::endl;
+
         throw e;
     }
-}
-
-Peer::~Peer() {
-
 }
 
 void Peer::sendAddRequest(tcp::socket& tmpSocket) {

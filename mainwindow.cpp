@@ -111,14 +111,25 @@ void MainWindow::s_connect() {
 
     // check port validity
     if (port == 0) {
-        QMessageBox::information(
-            this,
-            "P2P-Filesharing-Client",
-            QString("Port number must be between %1 and %2.").arg(QString::number(P2PNode::PORTMIN), QString::number(P2PNode::PORTMAX)));
+        QMessageBox::information(this, "P2P-Filesharing-Client",
+                                 QString("Port number must be between %1 and %2.").arg(
+                                     QString::number(P2PNode::PORTMIN),
+                                     QString::number(P2PNode::PORTMAX)));
         m_localPortBar->clear();
         return;
     } else {
-        m_peer = new Peer(port);
+        // create peer and assign port
+        try {
+            m_peer = new Peer(port);
+        } catch (std::exception& e) {
+            std::cerr << e.what() << std::endl;
+            QMessageBox::information(this, "P2P-Filesharing-Client", QString("Unable to assign address.\nMake sure port is not already in use."));
+            m_localPortBar->clear();
+            // peer was unable to connect, revert to original state (deleted and pointer set NULL)
+            delete m_peer;
+            m_peer = NULL;
+            return;
+        }
     }
 
     try {
@@ -138,6 +149,9 @@ void MainWindow::s_connect() {
             "P2P-Filesharing-Client",
             QString("Unable to connect to Connection Manager.\nPlease make sure it is running."));
         m_localPortBar->clear();
+        // peer was unable to connect, revert to original state (deleted and pointer set NULL)
+        delete m_peer;
+        m_peer = NULL;
     }
 }
 

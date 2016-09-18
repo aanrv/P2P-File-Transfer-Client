@@ -1,9 +1,7 @@
 // TO DO
 // 1. Make port spinbox
 // 2. Add connection manager port
-// 3. Error handle two clients same ip same port
 // 4. Other general error handling
-// 5. Client has issues connecting after failing first time.
 // 6. Understand why child destructor virtual
 
 #ifndef MAINWINDOW_H
