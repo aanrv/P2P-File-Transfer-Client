@@ -51,7 +51,8 @@ std::string P2PNode::parseAddress() {
 }
 
 void P2PNode::handleRemRequest() {
-    std::cout << "Remove request" << std::endl;
+    std::string addressString = parseAddress();
+    remPeer(addressString);
 }
 
 void P2PNode::sendPeersList() {

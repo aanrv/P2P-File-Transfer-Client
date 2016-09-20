@@ -26,6 +26,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 }
 
 MainWindow::~MainWindow() {
+    m_peer->leaveNetwork("localhost", std::to_string(P2PNode::DEFPORT));
 }
 
 void MainWindow::createWidgets() {

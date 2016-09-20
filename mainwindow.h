@@ -1,6 +1,3 @@
-// TO DO
-// 1. Add mutex to refreshPeersList()
-
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 

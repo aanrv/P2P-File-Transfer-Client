@@ -25,6 +25,24 @@ void Peer::joinNetwork(std::string server, std::string service) {
     }
 }
 
+void Peer::leaveNetwork(std::string server, std::string service) {
+    try {
+        tcp::socket tmpSocket(m_ioService);
+        tcp::resolver::query query(server, service);
+        tcp::resolver::iterator endpoint_iterator = m_resolver.resolve(query);
+
+        boost::asio::connect(tmpSocket, endpoint_iterator); // connect to connection manager
+        sendRemRequest(tmpSocket);                          // ask connection manager to remove from peer list
+        disconnectFromPeers();
+
+    } catch(std::exception& e) {
+        std::cerr << e.what() << std::endl;
+        std::cerr << "Peer::leaveNetwork(): Make sure the connection manager is running." << std::endl;
+
+        throw e;
+    }
+}
+
 void Peer::sendAddRequest(tcp::socket& tmpSocket) {
     try {
         // send add request to peer
@@ -38,6 +56,22 @@ void Peer::sendAddRequest(tcp::socket& tmpSocket) {
         boost::asio::write(tmpSocket, boost::asio::buffer(portString));                 // send port
     } catch (std::exception& e) {
         std::cerr << "Peer::sendAddRequest()" << e.what() << std::endl;
+    }
+}
+
+void Peer::sendRemRequest(tcp::socket& tmpSocket) {
+    try {
+        // write remove request to socket
+        char messageType = static_cast<char>(P2PNode::REMREQUEST);
+        boost::asio::write(tmpSocket, boost::asio::buffer(&messageType, 1));
+
+        // send listening port, peer will extract ip on its own
+        std::string portString = std::to_string(m_acceptor.local_endpoint().port());
+        char addressSize = static_cast<char>(portString.size());
+        boost::asio::write(tmpSocket, boost::asio::buffer(&addressSize, 1));            // send size of port;
+        boost::asio::write(tmpSocket, boost::asio::buffer(portString));                 // send port
+    } catch (std::exception& e) {
+        std::cerr << "Peer::sendRemRequest()" << e.what() << std::endl;
     }
 }
 
@@ -57,14 +91,30 @@ void Peer::connectToPeers() {
         } catch (std::exception& e) {
             std::cerr << "Peer::connectToPeers(): " << e.what() << std::endl;
             throw e;
+            continue;
         }
     }
 }
 
-void Peer::handleAddRequest() {
-    std::cout << "Peer: Add request" << std::endl;
-    std::string addressString = parseAddress();	// parse address from socket
-    addPeer(addressString);                     // add address to list
+void Peer::disconnectFromPeers() {
+    for (std::vector<std::string>::iterator it = m_peersList.begin(); it != m_peersList.end(); ++it) {
+        std::string currentPeerAddress = P2PNode::addressFromString(*it);
+        std::string currentPeerPort = P2PNode::portFromString(*it);
+
+        try {
+            tcp::socket tmpSocket(m_ioService);
+            tcp::resolver::query query(currentPeerAddress, currentPeerPort);
+            tcp::resolver::iterator endpoint_iterator = m_resolver.resolve(query);
+
+            boost::asio::connect(tmpSocket, endpoint_iterator);
+            sendRemRequest(tmpSocket);
+
+        } catch (std::exception& e) {
+            std::cerr << "Peer::connectToPeers(): " << e.what() << std::endl;
+            throw e;
+            continue;
+        }
+    }
 }
 
 void Peer::retreivePeersList(tcp::socket &tmpSocket) {
@@ -88,4 +138,10 @@ void Peer::retreivePeersList(tcp::socket &tmpSocket) {
     } catch (std::exception& e) {
         std::cerr << "Peer::retreivePeersList(): " << e.what() << std::endl;
     }
+}
+
+void Peer::handleAddRequest() {
+    std::cout << "Peer: Add request" << std::endl;
+    std::string addressString = parseAddress();     // parse address from socket
+    addPeer(addressString);                         // add address to list
 }
