@@ -5,7 +5,7 @@
 
 using boost::asio::ip::tcp;
 
-/* Keeps track of and provides new peers with list of peers currently on the network. */
+// Keeps track of and provides new peers with list of peers currently on the network
 class P2PNode {
 public:
     P2PNode(unsigned short port) : m_acceptor(m_ioService, tcp::endpoint(tcp::v4(), port)), m_socket(m_ioService) {}
@@ -42,20 +42,20 @@ public:
         return peerString.substr(peerString.find(delimiter) + 1, peerString.size() - peerString.find(delimiter) - 1);
     }
 
-    void handleConnection();            // A blocking call that waits for a peer to connect
+    void handleConnection();                                    // Handler for a connection
 
-    virtual void handleAddRequest();	// Connected peer wants to join network
-    void handleRemRequest();            // Connected peer wants to leave network
+    virtual void handleAddRequest();                            // Connected peer wants to join network
+    void handleRemRequest();                                    // Connected peer wants to leave network
 
-    std::string parseAddress();         // Read a peer's address from socket
-    void sendPeersList();               // Send list of peers on network to the connected peer
+    std::string parseAddress();                                 // Read a peer's address from socket
+    void sendPeersList();                                       // Send list of peers on network to the connected peer
 
-    void addPeer(std::string peer);     // If doesn't already exist, add peer address string to list
-    void remPeer(std::string peer);     // Remove peer address string from list
+    void addPeer(std::string peer);                             // If doesn't already exist, add peer address string to list
+    void remPeer(std::string peer);                             // Remove peer address string from list
 
-    void closeConnection();             // Closes connection on m_socket
+    void closeConnection();                                     // Closes connection on m_socket
 
-    void printPeers();                  // Pls use brain ty
+    void printPeers();                                          // Pls use brain ty
 
     const std::vector<std::string>& getPeersList() const;
 protected:

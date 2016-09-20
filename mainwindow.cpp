@@ -11,30 +11,28 @@
 #include <QPushButton>
 #include <QToolButton>
 #include <QMessageBox>
-#include <QSpinBox>
 #include <vector>
 #include <boost/asio.hpp>
 #include <boost/array.hpp>
+#include <boost/thread/thread.hpp>
+#include <boost/thread/mutex.hpp>
 
 using boost::asio::ip::tcp;
+boost::mutex refreshMutex;
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     createWidgets();
     createLayouts();
-
-    // this will be decided when user decides to connect
-    m_peer = NULL;
 }
 
 MainWindow::~MainWindow() {
-    delete m_peer;
 }
 
 void MainWindow::createWidgets() {
     m_peersList = new QListWidget();
     m_filesList = new QListWidget();
     m_localPortBar = new QLineEdit();
-    m_localPortBar->setPlaceholderText(tr("Port number to assign client"));
+    m_localPortBar->setPlaceholderText(tr("Enter the port number you wish to run on"));
     m_connectButton = new QPushButton(tr("Connect To Network"));
 
     m_searchBar = new QLineEdit();
@@ -43,7 +41,6 @@ void MainWindow::createWidgets() {
     m_searchButton->setIcon(style()->standardIcon(QStyle::SP_FileDialogContentsView));
 
     connect(m_connectButton, SIGNAL(clicked()), this, SLOT(s_connect()));
-    connect(this, SIGNAL(hasConnected()), this, SLOT(s_waitForPeers()));
 }
 
 void MainWindow::createLayouts() {
@@ -89,6 +86,7 @@ void MainWindow::createLayouts() {
 }
 
 void MainWindow::refreshPeerList() {
+    boost::mutex::scoped_lock lock(refreshMutex);
     std::cout << "Refreshing list of peers" << std::endl;
 
     if (m_peer != NULL) {
@@ -111,51 +109,57 @@ void MainWindow::s_connect() {
 
     // check port validity
     if (port == 0) {
-        QMessageBox::information(this, "P2P-Filesharing-Client",
-                                 QString("Port number must be between %1 and %2.").arg(
-                                     QString::number(P2PNode::PORTMIN),
-                                     QString::number(P2PNode::PORTMAX)));
+        QMessageBox::information(
+                    this,
+                    "P2P-Filesharing-Client",
+                    QString("Port number must be between %1 and %2.").arg(
+                        QString::number(P2PNode::PORTMIN),
+                        QString::number(P2PNode::PORTMAX)));
         m_localPortBar->clear();
         return;
     } else {
-        // create peer and assign port
+        // valid port, create peer
         try {
-            m_peer = new Peer(port);
+            m_peer.reset(new Peer(port));
         } catch (std::exception& e) {
             std::cerr << e.what() << std::endl;
-            QMessageBox::information(this, "P2P-Filesharing-Client", QString("Unable to assign address.\nMake sure port is not already in use."));
+            QMessageBox::information(
+                        this,
+                        "P2P-Filesharing-Client",
+                        QString("Unable to assign address.\n" \
+                                "Please make sure port is not already in use."));
             m_localPortBar->clear();
-            // peer was unable to connect, revert to original state (deleted and pointer set NULL)
-            delete m_peer;
-            m_peer = NULL;
+            m_peer.reset();             // peer was unable to have port assigned, delete
             return;
         }
     }
 
     try {
-        // port valid, join network
         m_peer->joinNetwork("localhost", std::to_string(P2PNode::DEFPORT));
 
-        // disable ability to reconnect
-        m_connectButton->setEnabled(false);
+        m_connectButton->setEnabled(false);     // disable ablity to reconnect
         m_localPortBar->setEnabled(false);
         refreshPeerList();
         qApp->processEvents();
 
-        emit hasConnected();
+        startAcceptorThread();                  // start seperate thread for recieving connections
+
     } catch(std::exception& e) {
         QMessageBox::information(
             this,
             "P2P-Filesharing-Client",
-            QString("Unable to connect to Connection Manager.\nPlease make sure it is running."));
+            QString("Unable to connect to Connection Manager.\n" \
+                    "Please make sure it is running."));
         m_localPortBar->clear();
-        // peer was unable to connect, revert to original state (deleted and pointer set NULL)
-        delete m_peer;
-        m_peer = NULL;
+        m_peer.reset();
     }
 }
 
-void MainWindow::s_waitForPeers() {
+void MainWindow::startAcceptorThread() {
+    m_acceptorThread = boost::thread(boost::bind(&MainWindow::waitForPeers, this));
+}
+
+void MainWindow::waitForPeers() {
     for (;;) {
         m_peer->handleConnection();
         refreshPeerList();

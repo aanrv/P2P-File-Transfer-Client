@@ -12,6 +12,6 @@ int main(int argc, char** argv) {
 	P2PNode connectionManager(port);
 	std::cout << "Running on port " << port << "\n" << std::endl;
 
-	for (;;) connectionManager.handleConnection();	// handle connections from peers until the end of time
+	for (;;) { connectionManager.handleConnection(); connectionManager.printPeers(); }
 }
 

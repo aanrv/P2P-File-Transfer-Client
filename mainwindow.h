@@ -1,14 +1,13 @@
 // TO DO
-// 1. Make port spinbox
-// 2. Add connection manager port
-// 4. Other general error handling
-// 6. Understand why child destructor virtual
+// 1. Add mutex to refreshPeersList()
 
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
 #include <QMainWindow>
 #include <boost/asio.hpp>
+#include <boost/thread.hpp>
+#include <boost/scoped_ptr.hpp>
 
 class QListWidget;
 class QLineEdit;
@@ -24,28 +23,29 @@ public:
     MainWindow(QWidget *parent = 0);
     ~MainWindow();
 
-private:
-    Peer* m_peer;
+    void refreshPeerList();
 
-    QListWidget*    m_peersList;        /* Displays list of peers on network. */
-    QListWidget*    m_filesList;        /* Displays list of files available for download from other peers. */
+private:
+    boost::scoped_ptr<Peer> m_peer;
+
+    QListWidget*    m_peersList;        // Displays list of peers on network
+    QListWidget*    m_filesList;        // Displays list of files available for download from other peers
     
-    QLineEdit*      m_searchBar;        /* Used to search for filenames in peers list. */
+    QLineEdit*      m_searchBar;        // Used to search for filenames in peers list
     QToolButton*    m_searchButton;
 
-    QLineEdit*      m_localPortBar;     /* Port number to assign client. */
-    QPushButton*    m_connectButton;    /* s_connect() */
+    QLineEdit*      m_localPortBar;     // Port number to assign client
+    QPushButton*    m_connectButton;    // s_connect()
+
+    boost::thread   m_acceptorThread;
 
     void createWidgets();
     void createLayouts();
-    void refreshPeerList();
+    void startAcceptorThread();
+    void waitForPeers();
 
 private slots:
-    void s_connect();                   /* Connects client to network and displays peers and files available for download. */
-    void s_waitForPeers();
-
-signals:
-    void hasConnected();
+    void s_connect();                   // Connects client to network and displays peers and files available for download
 };
 
 #endif // MAINWINDOW_H
