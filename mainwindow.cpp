@@ -27,15 +27,17 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 }
 
 MainWindow::~MainWindow() {
-    m_peer.leaveNetwork("localhost", std::to_string(P2PNode::DEFPORT));
+    m_peer.leaveNetwork(m_addrBar->text().toUtf8().constData(), m_portBar->text().toUtf8().constData());
 }
 
 void MainWindow::createWidgets() {
     m_peersList = new QListWidget();
     m_filesList = new QListWidget();
-    m_localPortBar = new QLineEdit();
-    m_localPortBar->setPlaceholderText(tr("Enter the port number you wish to run on"));
-    m_connectButton = new QPushButton(tr("Connect To Network"));
+    m_addrBar = new QLineEdit();
+    m_addrBar->setPlaceholderText(tr("Server Address"));
+    m_portBar = new QLineEdit();
+    m_portBar->setPlaceholderText(tr("Connection Manager Port"));
+    m_connectButton = new QPushButton(tr("Connect"));
 
     m_searchBar = new QLineEdit();
     m_searchBar->setPlaceholderText(tr("Search"));
@@ -77,7 +79,8 @@ void MainWindow::createLayouts() {
     topSplit->addWidget(rWidget);
 
     topBox->addWidget(topSplit);
-    botBox->addWidget(m_localPortBar);
+    botBox->addWidget(m_addrBar);
+    botBox->addWidget(m_portBar);
     botBox->addWidget(m_connectButton);
 
     centralLayout->addLayout(topBox);
@@ -103,11 +106,13 @@ void MainWindow::refreshPeerList() {
 
 void MainWindow::s_connect() {
     try {
-        m_peer.joinNetwork("localhost", std::to_string(P2PNode::DEFPORT));
+        m_peer.joinNetwork(m_addrBar->text().toUtf8().constData(), m_portBar->text().toUtf8().constData());
 
         m_connectButton->setEnabled(false);     // disable ablity to reconnect
-        m_localPortBar->setEnabled(false);
+        m_addrBar->setEnabled(false);
+        m_portBar->setEnabled(false);
         refreshPeerList();
+        setWindowTitle(windowTitle() + QString(" [Connected]"));
         qApp->processEvents();
 
         startAcceptorThread();                  // start seperate thread for recieving connections
@@ -118,7 +123,8 @@ void MainWindow::s_connect() {
             applicationName,
             QString("Unable to connect to Connection Manager.\n" \
                     "Please make sure it is running."));
-        m_localPortBar->clear();
+        m_portBar->clear();
+        m_addrBar->clear();
     }
 }
 

@@ -31,7 +31,8 @@ private:
     QLineEdit*      m_searchBar;        // Used to search for filenames in peers list
     QToolButton*    m_searchButton;
 
-    QLineEdit*      m_portBar;          // Port number to assign client
+    QLineEdit*      m_addrBar;          // Address of connection manager host
+    QLineEdit*      m_portBar;          // Connection manager port number
     QPushButton*    m_connectButton;    // s_connect()
 
     boost::thread   m_acceptorThread;
