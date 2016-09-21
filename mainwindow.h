@@ -25,15 +25,18 @@ public:
 private:
     Peer m_peer;
 
-    QListWidget*    m_peersList;        // Displays list of peers on network
-    QListWidget*    m_filesList;        // Displays list of files available for download from other peers
+    QListWidget*    m_peersList;            // Displays list of peers on network
+    QListWidget*    m_sharedFilesList;      // Displays list of files being shared by user
+    QListWidget*    m_availableFilesList;   // Displays list of files available for download from other peers
     
-    QLineEdit*      m_searchBar;        // Used to search for filenames in peers list
+    QPushButton*    m_addFileButton;
+    QLineEdit*      m_searchBar;            // Used to search for filenames in peers list
     QToolButton*    m_searchButton;
 
-    QLineEdit*      m_addrBar;          // Address of connection manager host
-    QLineEdit*      m_portBar;          // Connection manager port number
-    QPushButton*    m_connectButton;    // s_connect()
+    QLineEdit*      m_addrBar;              // Address of connection manager host
+    QLineEdit*      m_portBar;              // Connection manager port number
+
+    QPushButton*    m_connectButton;        // s_connect()
 
     boost::thread   m_acceptorThread;
 

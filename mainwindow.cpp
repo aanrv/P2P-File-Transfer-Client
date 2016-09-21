@@ -32,7 +32,8 @@ MainWindow::~MainWindow() {
 
 void MainWindow::createWidgets() {
     m_peersList = new QListWidget();
-    m_filesList = new QListWidget();
+    m_availableFilesList = new QListWidget();
+    m_sharedFilesList = new QListWidget();
     m_addrBar = new QLineEdit();
     m_addrBar->setPlaceholderText(tr("Server Address"));
     m_portBar = new QLineEdit();
@@ -43,6 +44,7 @@ void MainWindow::createWidgets() {
     m_searchBar->setPlaceholderText(tr("Search"));
     m_searchButton = new QToolButton();
     m_searchButton->setIcon(style()->standardIcon(QStyle::SP_FileDialogContentsView));
+    m_addFileButton = new QPushButton("Add a File");
 
     connect(m_connectButton, SIGNAL(clicked()), this, SLOT(s_connect()));
 }
@@ -63,12 +65,17 @@ void MainWindow::createLayouts() {
     lBox->addWidget(m_peersList);
 
     // Top-right, lists files available for download
-    rBox->addWidget(new QLabel("Files"));
+    QHBoxLayout* addFileLayout = new QHBoxLayout();
+    addFileLayout->addWidget(new QLabel("Shared Files"));
+    addFileLayout->addWidget(m_addFileButton);
+    rBox->addLayout(addFileLayout);
+    rBox->addWidget(m_sharedFilesList);
+    rBox->addWidget(new QLabel("Available Files"));
+    rBox->addWidget(m_availableFilesList);
     QHBoxLayout* searchLayout = new QHBoxLayout();
     searchLayout->addWidget(m_searchBar);
     searchLayout->addWidget(m_searchButton);
     rBox->addLayout(searchLayout);
-    rBox->addWidget(m_filesList);
 
     // Splitter for hosts and files lists
     QWidget* lWidget = new QWidget();
@@ -112,17 +119,16 @@ void MainWindow::s_connect() {
         m_addrBar->setEnabled(false);
         m_portBar->setEnabled(false);
         refreshPeerList();
-        setWindowTitle(windowTitle() + QString(" [Connected]"));
         qApp->processEvents();
-
+        setWindowTitle(windowTitle() + QString(" [%1]").arg(QString::fromStdString(m_peer.getAcceptorPort())));
         startAcceptorThread();                  // start seperate thread for recieving connections
 
     } catch(std::exception& e) {
         QMessageBox::information(
             this,
             applicationName,
-            QString("Unable to connect to Connection Manager.\n" \
-                    "Please make sure it is running."));
+            QString("Unable to connect to Connection Manager.\n\n" \
+                    "Please make sure the address and port are valid and that it is running."));
         m_portBar->clear();
         m_addrBar->clear();
     }

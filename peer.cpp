@@ -43,8 +43,6 @@ void Peer::leaveNetwork(std::string server, std::string service) {
     } catch(std::exception& e) {
         std::cerr << e.what() << std::endl;
         std::cerr << "Peer::leaveNetwork(): Make sure the connection manager is running." << std::endl;
-
-        throw e;
     }
 }
 
@@ -71,7 +69,7 @@ void Peer::sendRemRequest(tcp::socket& tmpSocket) {
         boost::asio::write(tmpSocket, boost::asio::buffer(&messageType, 1));
 
         // send listening port, peer will extract ip on its own
-        std::string portString = std::to_string(m_acceptor.local_endpoint().port());
+        std::string portString = getAcceptorPort();
         char addressSize = static_cast<char>(portString.size());
         boost::asio::write(tmpSocket, boost::asio::buffer(&addressSize, 1));            // send size of port;
         boost::asio::write(tmpSocket, boost::asio::buffer(portString));                 // send port

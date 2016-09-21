@@ -58,6 +58,7 @@ public:
     void printPeers();                                          // Pls use brain ty
 
     const std::vector<std::string>& getPeersList() const;
+    std::string getAcceptorPort() const;
 protected:
 	boost::asio::io_service m_ioService;
 	tcp::acceptor m_acceptor;

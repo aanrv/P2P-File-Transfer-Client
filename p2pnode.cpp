@@ -94,6 +94,10 @@ const std::vector<std::string>& P2PNode::getPeersList() const {
     return m_peersList;
 }
 
+std::string P2PNode::getAcceptorPort() const {
+    return std::to_string(m_acceptor.local_endpoint().port());
+}
+
 void P2PNode::printPeers() {
     std::cout << "peers>\n";
     for (std::vector<std::string>::iterator it = m_peersList.begin(); it != m_peersList.end(); ++it) std::cout << *it << std::endl;
