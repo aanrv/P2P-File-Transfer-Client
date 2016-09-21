@@ -1,5 +1,4 @@
 #include "mainwindow.h"
-#include "peer.h"
 #include <QWidget>
 #include <QApplication>
 #include <QSplitter>
@@ -20,13 +19,15 @@
 using boost::asio::ip::tcp;
 boost::mutex refreshMutex;
 
+const QString applicationName("P2P Filesharing Client");
+
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     createWidgets();
     createLayouts();
 }
 
 MainWindow::~MainWindow() {
-    m_peer->leaveNetwork("localhost", std::to_string(P2PNode::DEFPORT));
+    m_peer.leaveNetwork("localhost", std::to_string(P2PNode::DEFPORT));
 }
 
 void MainWindow::createWidgets() {
@@ -83,60 +84,26 @@ void MainWindow::createLayouts() {
     centralLayout->addLayout(botBox);
 
     this->setCentralWidget(centralWidget);
-    this->setWindowTitle("P2P Fileshare Interface");
+    this->setWindowTitle(applicationName);
 }
 
 void MainWindow::refreshPeerList() {
     boost::mutex::scoped_lock lock(refreshMutex);
     std::cout << "Refreshing list of peers" << std::endl;
 
-    if (m_peer != NULL) {
-        const std::vector<std::string> peers = m_peer->getPeersList();
+    const std::vector<std::string> peers = m_peer.getPeersList();
 
-        m_peersList->clear();
-        for (std::vector<std::string>::const_iterator it = peers.begin(); it != peers.end(); ++it) {
-            m_peersList->addItem(QString::fromStdString(*it));
-        }
-    } else {
-        std::cerr << "Cannot refresh peers list. m_peer == NULL" << std::endl;
+    m_peersList->clear();
+    for (std::vector<std::string>::const_iterator it = peers.begin(); it != peers.end(); ++it) {
+        m_peersList->addItem(QString::fromStdString(*it));
     }
+
     qApp->processEvents();
 }
 
 void MainWindow::s_connect() {
-    // determine user's provided port
-    QByteArray tmpPortBuffer = m_localPortBar->text().toLocal8Bit();
-    unsigned short port = P2PNode::strToPort(tmpPortBuffer.data());
-
-    // check port validity
-    if (port == 0) {
-        QMessageBox::information(
-                    this,
-                    "P2P-Filesharing-Client",
-                    QString("Port number must be between %1 and %2.").arg(
-                        QString::number(P2PNode::PORTMIN),
-                        QString::number(P2PNode::PORTMAX)));
-        m_localPortBar->clear();
-        return;
-    } else {
-        // valid port, create peer
-        try {
-            m_peer.reset(new Peer(port));
-        } catch (std::exception& e) {
-            std::cerr << e.what() << std::endl;
-            QMessageBox::information(
-                        this,
-                        "P2P-Filesharing-Client",
-                        QString("Unable to assign address.\n" \
-                                "Please make sure port is not already in use."));
-            m_localPortBar->clear();
-            m_peer.reset();             // peer was unable to have port assigned, delete
-            return;
-        }
-    }
-
     try {
-        m_peer->joinNetwork("localhost", std::to_string(P2PNode::DEFPORT));
+        m_peer.joinNetwork("localhost", std::to_string(P2PNode::DEFPORT));
 
         m_connectButton->setEnabled(false);     // disable ablity to reconnect
         m_localPortBar->setEnabled(false);
@@ -148,11 +115,10 @@ void MainWindow::s_connect() {
     } catch(std::exception& e) {
         QMessageBox::information(
             this,
-            "P2P-Filesharing-Client",
+            applicationName,
             QString("Unable to connect to Connection Manager.\n" \
                     "Please make sure it is running."));
         m_localPortBar->clear();
-        m_peer.reset();
     }
 }
 
@@ -162,7 +128,7 @@ void MainWindow::startAcceptorThread() {
 
 void MainWindow::waitForPeers() {
     for (;;) {
-        m_peer->handleConnection();
+        m_peer.handleConnection();
         refreshPeerList();
         qApp->processEvents();
     }

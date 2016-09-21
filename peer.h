@@ -10,7 +10,7 @@
 class Peer : public P2PNode
 {
 public:
-    Peer(unsigned short port) : P2PNode(port), m_resolver(m_ioService) {}
+    Peer() : P2PNode(0), m_resolver(m_ioService) {}
     virtual ~Peer();
 
     void joinNetwork(std::string server, std::string service);              // retreives peers from connection manager and notifies them

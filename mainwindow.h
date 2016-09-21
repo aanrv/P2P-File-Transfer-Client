@@ -5,12 +5,12 @@
 #include <boost/asio.hpp>
 #include <boost/thread.hpp>
 #include <boost/scoped_ptr.hpp>
+#include "peer.h"
 
 class QListWidget;
 class QLineEdit;
 class QPushButton;
 class QToolButton;
-class Peer;
 
 class MainWindow : public QMainWindow
 {
@@ -23,7 +23,7 @@ public:
     void refreshPeerList();
 
 private:
-    boost::scoped_ptr<Peer> m_peer;
+    Peer m_peer;
 
     QListWidget*    m_peersList;        // Displays list of peers on network
     QListWidget*    m_filesList;        // Displays list of files available for download from other peers
@@ -31,7 +31,7 @@ private:
     QLineEdit*      m_searchBar;        // Used to search for filenames in peers list
     QToolButton*    m_searchButton;
 
-    QLineEdit*      m_localPortBar;     // Port number to assign client
+    QLineEdit*      m_portBar;          // Port number to assign client
     QPushButton*    m_connectButton;    // s_connect()
 
     boost::thread   m_acceptorThread;

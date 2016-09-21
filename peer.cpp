@@ -31,8 +31,13 @@ void Peer::leaveNetwork(std::string server, std::string service) {
         tcp::resolver::query query(server, service);
         tcp::resolver::iterator endpoint_iterator = m_resolver.resolve(query);
 
-        boost::asio::connect(tmpSocket, endpoint_iterator); // connect to connection manager
-        sendRemRequest(tmpSocket);                          // ask connection manager to remove from peer list
+        try {
+            boost::asio::connect(tmpSocket, endpoint_iterator); // connect to connection manager
+            sendRemRequest(tmpSocket);                          // ask connection manager to remove from peer list
+        } catch (std::exception& e) {
+            std::cerr << "Peer::leaveNetwork(): Unable to send remove request to connection manager." << std::endl;
+        }
+
         disconnectFromPeers();
 
     } catch(std::exception& e) {
