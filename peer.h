@@ -17,6 +17,7 @@ public:
     void joinNetwork();                                                     // retrieves peers from connection manager and notifies them
     void leaveNetwork();                                                    // leaves network, connection manager told to remove from list
     void addShareFile(std::string filepath);                                // Add a path that is available to share
+    void remShareFile(std::string filepath);                                // Remove a file from being shared
 
     void printSharedFiles() const;
     const std::vector<std::string>& getSharedFilesList() const;
@@ -35,6 +36,7 @@ private:
     void sendRemRequest(tcp::socket &tmpSocket);                            // send a peer a request to remove self from peer list
 
     void sendAddFileRequest(tcp::socket &tmpSocket, std::string filePath, std::string port);    // requests peer to add file to available list
+    void sendRemFileRequest(tcp::socket &tmpSocket, std::string filepath, std::string port);    // requests peer to remove file from their available list
 
     void handleAddRequest();                                                // handle an add request sent by another peer
 

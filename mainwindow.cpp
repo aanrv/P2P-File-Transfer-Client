@@ -45,9 +45,11 @@ void MainWindow::createWidgets() {
     m_searchButton = new QToolButton();
     m_searchButton->setIcon(style()->standardIcon(QStyle::SP_FileDialogContentsView));
     m_addFileButton = new QPushButton("Add a File");
+    m_remFileButton = new QPushButton("Remove File");
 
     connect(m_connectButton, SIGNAL(clicked()), this, SLOT(s_connect()));
     connect(m_addFileButton, SIGNAL(clicked()), this, SLOT(s_addShareFile()));
+    connect(m_remFileButton, SIGNAL(clicked()), this, SLOT(s_remShareFile()));
 }
 
 void MainWindow::createLayouts() {
@@ -69,6 +71,7 @@ void MainWindow::createLayouts() {
     QHBoxLayout* addFileLayout = new QHBoxLayout();
     addFileLayout->addWidget(new QLabel("Shared Files"));
     addFileLayout->addWidget(m_addFileButton);
+    addFileLayout->addWidget(m_remFileButton);
     rBox->addLayout(addFileLayout);
     rBox->addWidget(m_sharedFilesList);
     rBox->addWidget(new QLabel("Available Files"));
@@ -76,7 +79,7 @@ void MainWindow::createLayouts() {
     QHBoxLayout* searchLayout = new QHBoxLayout();
     searchLayout->addWidget(m_searchBar);
     searchLayout->addWidget(m_searchButton);
-    rBox->addLayout(searchLayout);
+    //rBox->addLayout(searchLayout);
 
     // Splitter for hosts and files lists
     QWidget* lWidget = new QWidget();
@@ -176,6 +179,26 @@ void MainWindow::s_addShareFile() {
             applicationName,
             QString("Unable to add file \"%1\". \nMake sure you have connected to the Connection Manager.").arg(QFileInfo(QString::fromStdString(filepath)).fileName()));
             return;
+    }
+    refreshShareList();
+}
+
+void MainWindow::s_remShareFile() {
+    // loop through all selected files
+    QList<QListWidgetItem*> selectedItems = m_sharedFilesList->selectedItems();
+    foreach (QListWidgetItem* item, selectedItems) {
+        std::string filepath = item->text().toUtf8().constData();
+
+        try {
+            m_peer.remShareFile(filepath);
+        } catch (std::exception& e) {
+            std::cerr << "MainWindow:s_remShareFile(): " << e.what() << std::endl;
+            QMessageBox::information(
+                this,
+                applicationName,
+                QString("Unable to remove file \"%1\".\nGet rekt.").arg(QFileInfo(QString::fromStdString(filepath)).fileName()));
+                return;
+        }
     }
     refreshShareList();
 }

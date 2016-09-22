@@ -64,7 +64,10 @@ protected:
     void remPeer(std::string peer);                                         // Remove peer address string from list
 
     void handleAddFileRequest();                                            // Connected peer wants to share a file with network
-    void addAvailableFile(std::string filename, std::string address);       // Adds filename available for downloay `address`
+    void addAvailableFile(std::string filename, std::string address);       // Adds filename available for download `address`
+
+    void handleRemFileRequest();                                            // Connected peer wants to remove file it is sharing from network
+    void remAvailableFile(std::string filename, std::string);               // Removes filename from being available
 
     void sendFilesList();                                                   // Sends list of files available for download to connecting peer
 

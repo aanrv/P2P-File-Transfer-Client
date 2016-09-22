@@ -8,23 +8,23 @@
 #include <cassert>
 
 void P2PNode::handleConnection() {
-    std::cout << "---------->" << std::endl;
     // wait for a peer to connect
     m_acceptor.accept(m_socket);
 
     // determine request type
-    boost::array<char, 1> requestType;
-    boost::asio::read(m_socket, boost::asio::buffer(requestType), boost::asio::transfer_exactly(1));
+    char requestType;
+    boost::asio::read(m_socket, boost::asio::buffer(&requestType, 1));
 
     // handle request
-    if (requestType[0] == ADDREQUEST) handleAddRequest();
-    else if (requestType[0] == REMREQUEST) handleRemRequest();
-    else if (requestType[0] == ADDFILEREQUEST) handleAddFileRequest();
-    // else if (requestType[0] == REMFILEREQUEST) handleRemFileRequest();
+    if (requestType == ADDREQUEST) handleAddRequest();
+    else if (requestType == REMREQUEST) handleRemRequest();
+    else if (requestType == ADDFILEREQUEST) handleAddFileRequest();
+    else if (requestType == REMFILEREQUEST) handleRemFileRequest();
 
     // close connection after handling request
     m_socket.close();
 
+    std::cout << "---------->\n";
     printPeers();
     printAvailableFiles();
     std::cout << "<----------" << std::endl;
@@ -32,13 +32,13 @@ void P2PNode::handleConnection() {
 
 std::string P2PNode::parseAddress() {
     // read sender's port string size
-    boost::array<char, 1> addressSize;
-    boost::asio::read(m_socket, boost::asio::buffer(addressSize), boost::asio::transfer_exactly(1));
+    char addressSize;
+    boost::asio::read(m_socket, boost::asio::buffer(&addressSize, 1));
 
     // read port
     boost::array<char, MAX_STRING_SIZE> portBuffer;
-    boost::asio::read(m_socket, boost::asio::buffer(portBuffer), boost::asio::transfer_exactly(static_cast<short>(addressSize[0])));
-    std::string portString(portBuffer.begin(), portBuffer.begin() + static_cast<size_t>(addressSize[0]));
+    boost::asio::read(m_socket, boost::asio::buffer(portBuffer), boost::asio::transfer_exactly(static_cast<short>(addressSize)));
+    std::string portString(portBuffer.begin(), portBuffer.begin() + static_cast<size_t>(addressSize));
 
     // get sender's address
     std::string addressString(m_socket.remote_endpoint().address().to_string());
@@ -139,6 +139,28 @@ void P2PNode::printAvailableFiles() const {
     std::cout << std::endl;
 }
 
+void P2PNode::handleRemFileRequest() {
+    // parse address:port from acceptor socket
+    std::string addressString = parseAddress();
+
+    // read filename size
+    char fnSize;
+    boost::asio::read(m_socket, boost::asio::buffer(&fnSize, 1));
+
+    // read filename
+    boost::array<char, MAX_STRING_SIZE> filenameBuffer;
+    boost::asio::read(m_socket, boost::asio::buffer(filenameBuffer), boost::asio::transfer_exactly(static_cast<size_t>(fnSize)));
+
+    std::string filenameString(filenameBuffer.begin(), filenameBuffer.begin() + static_cast<size_t>(fnSize));
+
+    remAvailableFile(filenameString, addressString);
+}
+
+void P2PNode::remAvailableFile(std::string filename, std::string) {
+    m_availableFilesList.erase(filename);
+    printAvailableFiles();
+}
+
 const std::map<std::string, std::string>& P2PNode::getAvailableList() const {
     return m_availableFilesList;
 }
@@ -148,14 +170,14 @@ void P2PNode::handleAddFileRequest() {
     std::string addressString = parseAddress();
 
     // read filename size
-    boost::array<char, 1> fnSize;
-    boost::asio::read(m_socket, boost::asio::buffer(fnSize), boost::asio::transfer_exactly(1));
+    char fnSize;
+    boost::asio::read(m_socket, boost::asio::buffer(&fnSize, 1));
 
     // read filename
     boost::array<char, MAX_STRING_SIZE> filenameBuffer;
-    boost::asio::read(m_socket, boost::asio::buffer(filenameBuffer), boost::asio::transfer_exactly(static_cast<size_t>(fnSize[0])));
+    boost::asio::read(m_socket, boost::asio::buffer(filenameBuffer), boost::asio::transfer_exactly(static_cast<size_t>(fnSize)));
 
-    std::string filenameString(filenameBuffer.begin(), filenameBuffer.begin() + static_cast<size_t>(fnSize[0]));
+    std::string filenameString(filenameBuffer.begin(), filenameBuffer.begin() + static_cast<size_t>(fnSize));
 
     addAvailableFile(filenameString, addressString);
 }

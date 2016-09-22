@@ -11,12 +11,16 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 TARGET = P2P-Filesharing-Client
 TEMPLATE = app
 
-LIBS += -lboost_system \
-        -lboost_thread \
-        -lboost_filesystem
+QMAKE_CXXFLAGS += -Wall \
+    -Wextra \
+    -std=c++11
 
-SOURCES += main.cpp\
-        mainwindow.cpp \
+LIBS += -lboost_system \
+    -lboost_thread \
+    -lboost_filesystem
+
+SOURCES += main.cpp \
+    mainwindow.cpp \
     peer.cpp \
     p2pnode.cpp
 

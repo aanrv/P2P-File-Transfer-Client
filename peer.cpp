@@ -46,18 +46,18 @@ void Peer::retrievePeersList(tcp::socket &tmpSocket) {
     try {
         m_peersList.clear();
         // read first byte to see how many peers will be read
-        boost::array<char, 1> peerCount;
-        boost::asio::read(tmpSocket, boost::asio::buffer(peerCount), boost::asio::transfer_exactly(1));
+        char peerCount;
+        boost::asio::read(tmpSocket, boost::asio::buffer(&peerCount, 1));
 
         // read peerCount many addresses
-        for (short i = 0; i < static_cast<short>(peerCount[0]); ++i) {
+        for (short i = 0; i < static_cast<short>(peerCount); ++i) {
             // read first byte for size of string
-            boost::array<char, 1> strSize;
-            boost::asio::read(tmpSocket, boost::asio::buffer(strSize), boost::asio::transfer_exactly(1));
+            char strSize;
+            boost::asio::read(tmpSocket, boost::asio::buffer(&strSize, 1));
 
             boost::array<char, MAX_STRING_SIZE> buffer;
-            boost::asio::read(tmpSocket, boost::asio::buffer(buffer), boost::asio::transfer_exactly(static_cast<size_t>(strSize[0])));
-            std::string readString(buffer.begin(), buffer.begin() + static_cast<short>(strSize[0]));
+            boost::asio::read(tmpSocket, boost::asio::buffer(buffer), boost::asio::transfer_exactly(static_cast<size_t>(strSize)));
+            std::string readString(buffer.begin(), buffer.begin() + static_cast<short>(strSize));
 
             addPeer(readString);
         }
@@ -70,26 +70,26 @@ void Peer::retrieveFilesList(tcp::socket& tmpSocket) {
     try {
         m_availableFilesList.clear();
         // read first byte to see how many peers will be read
-        boost::array<char, 1> fileCount;
-        boost::asio::read(tmpSocket, boost::asio::buffer(fileCount), boost::asio::transfer_exactly(1));
+        char fileCount;
+        boost::asio::read(tmpSocket, boost::asio::buffer(&fileCount, 1));
 
         // read peerCount many addresses
-        for (short i = 0; i < static_cast<short>(fileCount[0]); ++i) {
+        for (short i = 0; i < static_cast<short>(fileCount); ++i) {
             // read first byte for size of file string
-            boost::array<char, 1> strSize;
-            boost::asio::read(tmpSocket, boost::asio::buffer(strSize), boost::asio::transfer_exactly(1));
+            char strSize;
+            boost::asio::read(tmpSocket, boost::asio::buffer(&strSize, 1));
             // read file str
             boost::array<char, MAX_STRING_SIZE> buffer;
-            boost::asio::read(tmpSocket, boost::asio::buffer(buffer), boost::asio::transfer_exactly(static_cast<size_t>(strSize[0])));
-            std::string readString(buffer.begin(), buffer.begin() + static_cast<short>(strSize[0]));
+            boost::asio::read(tmpSocket, boost::asio::buffer(buffer), boost::asio::transfer_exactly(static_cast<size_t>(strSize)));
+            std::string readString(buffer.begin(), buffer.begin() + static_cast<short>(strSize));
 
             // read first byte for size of addr string
-            boost::array<char, 1> addrSize;
-            boost::asio::read(tmpSocket, boost::asio::buffer(addrSize), boost::asio::transfer_exactly(1));
+            char addrSize;
+            boost::asio::read(tmpSocket, boost::asio::buffer(&addrSize, 1));
             // read addr str
             boost::array<char, MAX_STRING_SIZE> addrBuffer;
-            boost::asio::read(tmpSocket, boost::asio::buffer(addrBuffer), boost::asio::transfer_exactly(static_cast<size_t>(addrSize[0])));
-            std::string readAddrString(addrBuffer.begin(), addrBuffer.begin() + static_cast<short>(addrSize[0]));
+            boost::asio::read(tmpSocket, boost::asio::buffer(addrBuffer), boost::asio::transfer_exactly(static_cast<size_t>(addrSize)));
+            std::string readAddrString(addrBuffer.begin(), addrBuffer.begin() + static_cast<short>(addrSize));
 
             addAvailableFile(readString, readAddrString);
         }
@@ -176,18 +176,16 @@ void Peer::disconnectFromPeers() {
 void Peer::addShareFile(std::string filepath) {
     // make sure the file's *name* doesn't already exist in shared or available
     std::string filename = boost::filesystem::path(filepath).filename().string();
-
     for (std::vector<std::string>::const_iterator it = m_sharedFilesList.begin(); it != m_sharedFilesList.end(); ++it) {
         boost::filesystem::path curr(*it);
         std::string currentFilename = curr.filename().string();
         if (currentFilename == filename) throw std::invalid_argument("Peer::addShareFile(): File \"" + filename + "\" is already shared.");
     }
-
     for (auto const &it : m_availableFilesList) {
         if (it.first == filename) throw std::invalid_argument("Peer::addShareFile(): File \"" + filename + "\" is already available.");
     }
 
-    // send add file requests to clients and conncetion manager
+    // send add file requests to connection manager
     try {
         tcp::socket tmpSocket(m_ioService);
         tcp::resolver::query query(m_connectionManagerAddress, m_connectionManagerPort);
@@ -195,12 +193,11 @@ void Peer::addShareFile(std::string filepath) {
 
         boost::asio::connect(tmpSocket, endpoint_iterator);
         sendAddFileRequest(tmpSocket, filename, getAcceptorPort());
-
     } catch (std::exception& e) {
-        std::cerr << "Peer::connectToPeers(): Unable to connect to connection manager. " << e.what() << std::endl;
+        std::cerr << "Peer::addShareFile(): Unable to connect to connection manager. " << e.what() << std::endl;
         throw e;
     }
-
+    // send add file requests to peers
     for (std::vector<std::string>::const_iterator it = m_peersList.begin(); it != m_peersList.end(); ++it) {
         std::string currentPeerAddress = P2PNode::addressFromString(*it);
         std::string currentPeerPort = P2PNode::portFromString(*it);
@@ -214,10 +211,53 @@ void Peer::addShareFile(std::string filepath) {
             sendAddFileRequest(tmpSocket, filename, getAcceptorPort());
 
         } catch (std::exception& e) {
-            std::cerr << "Peer::connectToPeers(): " << e.what() << std::endl;
+            std::cerr << "Peer::addShareFile(): " << e.what() << std::endl;
         }
     }
     m_sharedFilesList.push_back(filepath);  // add to your list
+}
+
+void Peer::remShareFile(std::string filepath) {
+    // make sure file exists
+    std::string filename = boost::filesystem::path(filepath).filename().string();
+    bool found = false;
+    for (std::vector<std::string>::const_iterator it = m_sharedFilesList.begin(); it != m_sharedFilesList.end() && !found; ++it) {
+        boost::filesystem::path curr(*it);
+        std::string currentFilename = curr.filename().string();
+        if (currentFilename == filename) found = true;
+    }
+    if (!found) throw std::invalid_argument("Peer::remShareFile(): File \"" + filename + "\" doesn't exist.");
+
+    // send add file requests to connection manager
+    try {
+        tcp::socket tmpSocket(m_ioService);
+        tcp::resolver::query query(m_connectionManagerAddress, m_connectionManagerPort);
+        tcp::resolver::iterator endpoint_iterator = m_resolver.resolve(query);
+
+        boost::asio::connect(tmpSocket, endpoint_iterator);
+        sendRemFileRequest(tmpSocket, filename, getAcceptorPort());
+    } catch (std::exception& e) {
+        std::cerr << "Peer::remShareFile(): Unable to connect to connection manager. " << e.what() << std::endl;
+        throw e;
+    }
+    // send rem file requests to peers
+    for (std::vector<std::string>::const_iterator it = m_peersList.begin(); it != m_peersList.end(); ++it) {
+        std::string currentPeerAddress = P2PNode::addressFromString(*it);
+        std::string currentPeerPort = P2PNode::portFromString(*it);
+
+        try {
+            tcp::socket tmpSocket(m_ioService);
+            tcp::resolver::query query(currentPeerAddress, currentPeerPort);
+            tcp::resolver::iterator endpoint_iterator = m_resolver.resolve(query);
+
+            boost::asio::connect(tmpSocket, endpoint_iterator);
+            sendRemFileRequest(tmpSocket, filename, getAcceptorPort());
+
+        } catch (std::exception& e) {
+            std::cerr << "Peer::remShareFile(): " << e.what() << std::endl;
+        }
+    }
+    m_sharedFilesList.erase(std::remove(m_sharedFilesList.begin(), m_sharedFilesList.end(), filepath), m_sharedFilesList.end());
 }
 
 void Peer::sendAddFileRequest(tcp::socket &tmpSocket, std::string filePath, std::string port) {
@@ -241,6 +281,29 @@ void Peer::sendAddFileRequest(tcp::socket &tmpSocket, std::string filePath, std:
     } catch (std::exception& e) {
         std::cerr << "Peer::sendAddFileRequest()" << e.what() << std::endl;
     }
+}
+
+void Peer::sendRemFileRequest(tcp::socket &tmpSocket, std::string filepath, std::string port) {
+    try {
+            std::string filename = boost::filesystem::path(filepath).filename().string();
+            // send message type
+            char messageType = static_cast<char>(Peer::REMFILEREQUEST);
+            boost::asio::write(tmpSocket, boost::asio::buffer(&messageType, 1));
+
+            // send corresponding port
+            char portSize = static_cast<char>(port.size());
+            boost::asio::write(tmpSocket, boost::asio::buffer(&portSize, 1));
+            boost::asio::write(tmpSocket, boost::asio::buffer(port));
+
+            // send filename
+            if (filename.size() > P2PNode::MAX_STRING_SIZE) throw std::length_error("Filename too large. Sorry m8, totally my fault.");
+            char fnSize = static_cast<char>(filename.size());
+            boost::asio::write(tmpSocket, boost::asio::buffer(&fnSize, 1));
+            boost::asio::write(tmpSocket, boost::asio::buffer(filename));
+
+        } catch (std::exception& e) {
+            std::cerr << "Peer::sendRemFileRequest()" << e.what() << std::endl;
+        }
 }
 
 void Peer::handleAddRequest() {

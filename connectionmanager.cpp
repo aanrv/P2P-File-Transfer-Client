@@ -1,16 +1,12 @@
 #include "p2pnode.h"
 
 int main(int argc, char** argv) {
-	// assign either provided port or default port
-	unsigned short port = P2PNode::DEFPORT;
-	if (argc == 2) {
-		port = P2PNode::strToPort(argv[1]);
-		if (port == 0) { std::cerr << "Invalid port." << std::endl; return EXIT_FAILURE; }
-	}
+	unsigned short port = argc == 2 ? P2PNode::strToPort(argv[1]) : P2PNode::DEFPORT;
+	if (port == 0) { std::cerr << "Invalid port." << std::endl; return EXIT_FAILURE; }
 	
 	P2PNode connectionManager(port);
 	std::cout << "Running on port " << port << "\n" << std::endl;
 
-	for (;;) { connectionManager.handleConnection(); connectionManager.printPeers(); }
+	for (;;) connectionManager.handleConnection();
 }
 
