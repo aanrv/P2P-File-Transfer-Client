@@ -12,7 +12,8 @@ TARGET = P2P-Filesharing-Client
 TEMPLATE = app
 
 LIBS += -lboost_system \
-        -lboost_thread
+        -lboost_thread \
+        -lboost_filesystem
 
 SOURCES += main.cpp\
         mainwindow.cpp \

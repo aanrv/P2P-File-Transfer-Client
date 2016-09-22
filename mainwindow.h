@@ -1,3 +1,8 @@
+// 1. + - buttons for sharing files.
+// 2. Change single size buffers to chars
+// 3. Use more mutex.
+// 4. handleConnection should return connection type to avoid having to refresh everything.
+
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
@@ -18,9 +23,7 @@ class MainWindow : public QMainWindow
 
 public:
     MainWindow(QWidget *parent = 0);
-    ~MainWindow();
-
-    void refreshPeerList();
+    ~MainWindow();   
 
 private:
     Peer m_peer;
@@ -29,7 +32,7 @@ private:
     QListWidget*    m_sharedFilesList;      // Displays list of files being shared by user
     QListWidget*    m_availableFilesList;   // Displays list of files available for download from other peers
     
-    QPushButton*    m_addFileButton;
+    QPushButton*    m_addFileButton;        // s_addShareFile()
     QLineEdit*      m_searchBar;            // Used to search for filenames in peers list
     QToolButton*    m_searchButton;
 
@@ -45,8 +48,13 @@ private:
     void startAcceptorThread();
     void waitForPeers();
 
+    void refreshPeerList();
+    void refreshShareList();
+    void refreshAvailableList();
+
 private slots:
     void s_connect();                   // Connects client to network and displays peers and files available for download
+    void s_addShareFile();              // Browse for a file to allow sharing it
 };
 
 #endif // MAINWINDOW_H

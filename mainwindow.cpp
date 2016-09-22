@@ -1,6 +1,5 @@
 #include "mainwindow.h"
 #include <QWidget>
-#include <QApplication>
 #include <QSplitter>
 #include <QHBoxLayout>
 #include <QVBoxLayout>
@@ -10,6 +9,7 @@
 #include <QPushButton>
 #include <QToolButton>
 #include <QMessageBox>
+#include <QFileDialog>
 #include <vector>
 #include <boost/asio.hpp>
 #include <boost/array.hpp>
@@ -27,7 +27,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 }
 
 MainWindow::~MainWindow() {
-    m_peer.leaveNetwork(m_addrBar->text().toUtf8().constData(), m_portBar->text().toUtf8().constData());
+    m_peer.leaveNetwork();
 }
 
 void MainWindow::createWidgets() {
@@ -47,6 +47,7 @@ void MainWindow::createWidgets() {
     m_addFileButton = new QPushButton("Add a File");
 
     connect(m_connectButton, SIGNAL(clicked()), this, SLOT(s_connect()));
+    connect(m_addFileButton, SIGNAL(clicked()), this, SLOT(s_addShareFile()));
 }
 
 void MainWindow::createLayouts() {
@@ -107,19 +108,37 @@ void MainWindow::refreshPeerList() {
     for (std::vector<std::string>::const_iterator it = peers.begin(); it != peers.end(); ++it) {
         m_peersList->addItem(QString::fromStdString(*it));
     }
+}
 
-    qApp->processEvents();
+void MainWindow::refreshShareList() {
+    std::cout << "Refreshing list of shared files." << std::endl;
+    m_sharedFilesList->clear();
+    for (std::vector<std::string>::const_iterator it = m_peer.getSharedFilesList().begin(); it != m_peer.getSharedFilesList().end(); ++it) {
+        m_sharedFilesList->addItem(QString::fromStdString(*it));
+    }
+    m_peer.printSharedFiles();
+}
+
+void MainWindow::refreshAvailableList() {
+    m_availableFilesList->clear();
+    std::map<std::string, std::string> availMap = m_peer.getAvailableList();
+    for(auto const &it : availMap) {
+        m_availableFilesList->addItem(QString("%1 (%2)").arg(QString::fromStdString(it.first), QString::fromStdString((it.second))));
+    }
 }
 
 void MainWindow::s_connect() {
     try {
-        m_peer.joinNetwork(m_addrBar->text().toUtf8().constData(), m_portBar->text().toUtf8().constData());
+        m_peer.setConnectionManagerAddress(m_addrBar->text().toUtf8().constData());
+        m_peer.setConnectionManagerPort(m_portBar->text().toUtf8().constData());
+        m_peer.joinNetwork();
 
         m_connectButton->setEnabled(false);     // disable ablity to reconnect
         m_addrBar->setEnabled(false);
         m_portBar->setEnabled(false);
         refreshPeerList();
-        qApp->processEvents();
+        refreshAvailableList();
+
         setWindowTitle(windowTitle() + QString(" [%1]").arg(QString::fromStdString(m_peer.getAcceptorPort())));
         startAcceptorThread();                  // start seperate thread for recieving connections
 
@@ -127,11 +146,38 @@ void MainWindow::s_connect() {
         QMessageBox::information(
             this,
             applicationName,
-            QString("Unable to connect to Connection Manager.\n\n" \
+            QString("Unable to connect to Connection Manager.\n" \
                     "Please make sure the address and port are valid and that it is running."));
+
+        m_peer.setConnectionManagerAddress("");
+        m_peer.setConnectionManagerPort("");
         m_portBar->clear();
         m_addrBar->clear();
     }
+}
+
+void MainWindow::s_addShareFile() {
+    std::string filepath = QFileDialog::getOpenFileName(this, tr("Share a File")).toUtf8().constData();
+    if (filepath.empty()) return;
+
+    try {
+        m_peer.addShareFile(filepath);
+    } catch (std::invalid_argument& e) {
+        std::cerr << "MainWindow::s_addShareFile(): " << e.what() << std::endl;
+        QMessageBox::information(
+            this,
+            applicationName,
+            QString("Unable to add file \"%1\" because it already exists.").arg(QFileInfo(QString::fromStdString(filepath)).fileName()));
+            return;
+    } catch (std::exception& e) {
+        std::cerr << "MainWindow::s_addShareFile(): " << e.what() << std::endl;
+        QMessageBox::information(
+            this,
+            applicationName,
+            QString("Unable to add file \"%1\". \nMake sure you have connected to the Connection Manager.").arg(QFileInfo(QString::fromStdString(filepath)).fileName()));
+            return;
+    }
+    refreshShareList();
 }
 
 void MainWindow::startAcceptorThread() {
@@ -142,6 +188,7 @@ void MainWindow::waitForPeers() {
     for (;;) {
         m_peer.handleConnection();
         refreshPeerList();
-        qApp->processEvents();
+        refreshShareList();
+        refreshAvailableList();
     }
 }
