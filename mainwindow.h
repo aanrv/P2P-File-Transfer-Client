@@ -3,6 +3,7 @@
 // 3. Use more mutex.
 // 4. handleConnection should return connection type to avoid having to refresh everything.
 // 5. Send add/rem req functions can be shortened.
+// 6. Lots of variables, parameters, and functions should be conts.
 
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
@@ -36,6 +37,7 @@ private:
     
     QPushButton*    m_addFileButton;        // s_addShareFile()
     QPushButton*    m_remFileButton;        // s_remShareFile()
+    QPushButton*    m_downloadFileButton;   // s_downloadAvailableFile();
     QLineEdit*      m_searchBar;            // Used to search for filenames in peers list
     QToolButton*    m_searchButton;
 
@@ -59,6 +61,7 @@ private slots:
     void s_connect();                       // Connects client to network and displays peers and files available for download
     void s_addShareFile();                  // Browse for a file to allow sharing it
     void s_remShareFile();                  // Remove file that is currently being shared
+    void s_downloadAvailableFile();         // Download selected file
 };
 
 #endif // MAINWINDOW_H

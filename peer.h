@@ -11,13 +11,23 @@
 class Peer : public P2PNode
 {
 public:
+
+    const size_t FILE_PACKET_SIZE = 1024;
+
+    typedef enum _MessageType {
+        DOWNFILEREQUEST = REMFILEREQUEST + 1    // request to recieve a file for download
+    } MessageType;
+
     Peer() : P2PNode(0), m_resolver(m_ioService) {}
     virtual ~Peer();
+
+    void handleConnection();
 
     void joinNetwork();                                                     // retrieves peers from connection manager and notifies them
     void leaveNetwork();                                                    // leaves network, connection manager told to remove from list
     void addShareFile(std::string filepath);                                // Add a path that is available to share
     void remShareFile(std::string filepath);                                // Remove a file from being shared
+    void downloadAvailableFile(std::string filename);                       // Download a file made available by a peer
 
     void printSharedFiles() const;
     const std::vector<std::string>& getSharedFilesList() const;
@@ -37,8 +47,15 @@ private:
 
     void sendAddFileRequest(tcp::socket &tmpSocket, std::string filePath, std::string port);    // requests peer to add file to available list
     void sendRemFileRequest(tcp::socket &tmpSocket, std::string filepath, std::string port);    // requests peer to remove file from their available list
+    void sendDownloadFileRequest(tcp::socket &tmpSocket, std::string filename);                 // requests peer to provide file 'filename'
 
     void handleAddRequest();                                                // handle an add request sent by another peer
+    void handleDownloadFileRequest();                                       // handle a request from peer to provide file
+
+    void sendFile(std::string filename);                                    // send file filename over m_socket
+    void recvFile(tcp::socket &tmpSocket, std::string filename);            // recieve a file over tmpSocket
+
+    std::string pathFromFilename(std::string filename);                     // returns the complete path from a filename in share list
 
     std::string m_connectionManagerAddress;
     std::string m_connectionManagerPort;

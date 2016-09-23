@@ -43,7 +43,7 @@ public:
         return peerString.substr(peerString.find(delimiter) + 1, peerString.size() - peerString.find(delimiter) - 1);
     }
 
-    void handleConnection();                                                // Handler for a connection
+    virtual void handleConnection();                                                // Handler for a connection
 
     void printPeers() const;                                                // Pls use brain ty
     void printAvailableFiles() const;
@@ -70,6 +70,9 @@ protected:
     void remAvailableFile(std::string filename, std::string);               // Removes filename from being available
 
     void sendFilesList();                                                   // Sends list of files available for download to connecting peer
+
+    std::string pathToFile(std::string path);                               // given path, returns filename
+    std::string fileToPath(std::string file);                               // given filename, finds and returns full path from list
 
 	boost::asio::io_service m_ioService;
 	tcp::acceptor m_acceptor;

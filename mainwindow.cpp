@@ -44,12 +44,14 @@ void MainWindow::createWidgets() {
     m_searchBar->setPlaceholderText(tr("Search"));
     m_searchButton = new QToolButton();
     m_searchButton->setIcon(style()->standardIcon(QStyle::SP_FileDialogContentsView));
-    m_addFileButton = new QPushButton("Add a File");
-    m_remFileButton = new QPushButton("Remove File");
+    m_addFileButton = new QPushButton(tr("Share a File"));
+    m_remFileButton = new QPushButton(tr("Unshare File"));
+    m_downloadFileButton = new QPushButton(tr("Download"));
 
     connect(m_connectButton, SIGNAL(clicked()), this, SLOT(s_connect()));
     connect(m_addFileButton, SIGNAL(clicked()), this, SLOT(s_addShareFile()));
     connect(m_remFileButton, SIGNAL(clicked()), this, SLOT(s_remShareFile()));
+    connect(m_downloadFileButton, SIGNAL(clicked()), this, SLOT(s_downloadAvailableFile()));
 }
 
 void MainWindow::createLayouts() {
@@ -64,17 +66,20 @@ void MainWindow::createLayouts() {
     QVBoxLayout* rBox = new QVBoxLayout();
 
     // Top-left, lists hosts
-    lBox->addWidget(new QLabel("Peers"));
+    lBox->addWidget(new QLabel(tr("Peers")));
     lBox->addWidget(m_peersList);
 
     // Top-right, lists files available for download
     QHBoxLayout* addFileLayout = new QHBoxLayout();
-    addFileLayout->addWidget(new QLabel("Shared Files"));
+    addFileLayout->addWidget(new QLabel(tr("Shared Files")));
     addFileLayout->addWidget(m_addFileButton);
     addFileLayout->addWidget(m_remFileButton);
     rBox->addLayout(addFileLayout);
     rBox->addWidget(m_sharedFilesList);
-    rBox->addWidget(new QLabel("Available Files"));
+    QHBoxLayout* downloadFileLayout = new QHBoxLayout();
+    downloadFileLayout->addWidget(new QLabel(tr("Available Files")));
+    downloadFileLayout->addWidget(m_downloadFileButton);
+    rBox->addLayout(downloadFileLayout);
     rBox->addWidget(m_availableFilesList);
     QHBoxLayout* searchLayout = new QHBoxLayout();
     searchLayout->addWidget(m_searchBar);
@@ -103,7 +108,6 @@ void MainWindow::createLayouts() {
 
 void MainWindow::refreshPeerList() {
     boost::mutex::scoped_lock lock(refreshMutex);
-    std::cout << "Refreshing list of peers" << std::endl;
 
     const std::vector<std::string> peers = m_peer.getPeersList();
 
@@ -114,7 +118,6 @@ void MainWindow::refreshPeerList() {
 }
 
 void MainWindow::refreshShareList() {
-    std::cout << "Refreshing list of shared files." << std::endl;
     m_sharedFilesList->clear();
     for (std::vector<std::string>::const_iterator it = m_peer.getSharedFilesList().begin(); it != m_peer.getSharedFilesList().end(); ++it) {
         m_sharedFilesList->addItem(QString::fromStdString(*it));
@@ -149,8 +152,8 @@ void MainWindow::s_connect() {
         QMessageBox::information(
             this,
             applicationName,
-            QString("Unable to connect to Connection Manager.\n" \
-                    "Please make sure the address and port are valid and that it is running."));
+            QString(tr("Unable to connect to Connection Manager.\n" \
+                    "Please make sure the address and port are valid and that it is running.")));
 
         m_peer.setConnectionManagerAddress("");
         m_peer.setConnectionManagerPort("");
@@ -170,14 +173,14 @@ void MainWindow::s_addShareFile() {
         QMessageBox::information(
             this,
             applicationName,
-            QString("Unable to add file \"%1\" because it already exists.").arg(QFileInfo(QString::fromStdString(filepath)).fileName()));
+            QString(tr("Unable to add file \"%1\" because it already exists.")).arg(QFileInfo(QString::fromStdString(filepath)).fileName()));
             return;
     } catch (std::exception& e) {
         std::cerr << "MainWindow::s_addShareFile(): " << e.what() << std::endl;
         QMessageBox::information(
             this,
             applicationName,
-            QString("Unable to add file \"%1\". \nMake sure you have connected to the Connection Manager.").arg(QFileInfo(QString::fromStdString(filepath)).fileName()));
+            QString(tr("Unable to add file \"%1\". \nMake sure you have connected to the Connection Manager.")).arg(QFileInfo(QString::fromStdString(filepath)).fileName()));
             return;
     }
     refreshShareList();
@@ -196,11 +199,36 @@ void MainWindow::s_remShareFile() {
             QMessageBox::information(
                 this,
                 applicationName,
-                QString("Unable to remove file \"%1\".\nGet rekt.").arg(QFileInfo(QString::fromStdString(filepath)).fileName()));
+                QString(tr("Unable to remove file \"%1\".\nGet rekt.")).arg(QFileInfo(QString::fromStdString(filepath)).fileName()));
                 return;
         }
     }
     refreshShareList();
+}
+
+void MainWindow::s_downloadAvailableFile() {
+    QList<QListWidgetItem*> selectedItems = m_availableFilesList->selectedItems();
+    foreach (QListWidgetItem* item, selectedItems) {
+        std::string listString = item->text().toUtf8().constData();
+        std::string filename = listString.substr(0, listString.find(' '));
+        try {
+            QMessageBox::information(
+                this,
+                applicationName,
+                QString(tr("You will be notified when file has finished downloading.")));
+            m_peer.downloadAvailableFile(filename);
+            QMessageBox::information(
+                this,
+                applicationName,
+                QString(tr("File \"%1\" has finished downloading.")).arg(QString::fromStdString(filename)));
+        } catch (std::exception& e) {
+            std::cerr << "MainWindow::s_downloadAvailableFile(): Download failed. " << e.what() << std::endl;
+            QMessageBox::information(
+                this,
+                applicationName,
+                QString(tr("Download failed.")));
+        }
+    }
 }
 
 void MainWindow::startAcceptorThread() {

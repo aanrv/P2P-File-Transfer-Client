@@ -1,9 +1,35 @@
 #include "peer.h"
 #include <boost/filesystem/path.hpp>
+#include <fstream>
 
 using boost::asio::ip::tcp;
 
 Peer::~Peer() {
+}
+
+void Peer::handleConnection() {
+    // wait for a peer to connect
+    m_acceptor.accept(m_socket);
+
+    // determine request type
+    char requestType;
+    boost::asio::read(m_socket, boost::asio::buffer(&requestType, 1));
+
+    // handle request
+    if (requestType == ADDREQUEST) handleAddRequest();
+    else if (requestType == REMREQUEST) handleRemRequest();
+    else if (requestType == ADDFILEREQUEST) handleAddFileRequest();
+    else if (requestType == REMFILEREQUEST) handleRemFileRequest();
+    else if (requestType == DOWNFILEREQUEST) handleDownloadFileRequest();
+
+    // close connection after handling request
+    m_socket.close();
+    /*
+    std::cout << "---------->\n";
+    printPeers();
+    printAvailableFiles();
+    std::cout << "<----------" << std::endl;
+    */
 }
 
 void Peer::joinNetwork() {
@@ -285,25 +311,135 @@ void Peer::sendAddFileRequest(tcp::socket &tmpSocket, std::string filePath, std:
 
 void Peer::sendRemFileRequest(tcp::socket &tmpSocket, std::string filepath, std::string port) {
     try {
-            std::string filename = boost::filesystem::path(filepath).filename().string();
-            // send message type
-            char messageType = static_cast<char>(Peer::REMFILEREQUEST);
-            boost::asio::write(tmpSocket, boost::asio::buffer(&messageType, 1));
+        std::string filename = boost::filesystem::path(filepath).filename().string();
+        // send message type
+        char messageType = static_cast<char>(Peer::REMFILEREQUEST);
+        boost::asio::write(tmpSocket, boost::asio::buffer(&messageType, 1));
 
-            // send corresponding port
-            char portSize = static_cast<char>(port.size());
-            boost::asio::write(tmpSocket, boost::asio::buffer(&portSize, 1));
-            boost::asio::write(tmpSocket, boost::asio::buffer(port));
+        // send corresponding port
+        char portSize = static_cast<char>(port.size());
+        boost::asio::write(tmpSocket, boost::asio::buffer(&portSize, 1));
+        boost::asio::write(tmpSocket, boost::asio::buffer(port));
 
-            // send filename
-            if (filename.size() > P2PNode::MAX_STRING_SIZE) throw std::length_error("Filename too large. Sorry m8, totally my fault.");
-            char fnSize = static_cast<char>(filename.size());
-            boost::asio::write(tmpSocket, boost::asio::buffer(&fnSize, 1));
-            boost::asio::write(tmpSocket, boost::asio::buffer(filename));
+        // send filename
+        if (filename.size() > P2PNode::MAX_STRING_SIZE) throw std::length_error("Filename too large. Sorry m8, totally my fault.");
+        char fnSize = static_cast<char>(filename.size());
+        boost::asio::write(tmpSocket, boost::asio::buffer(&fnSize, 1));
+        boost::asio::write(tmpSocket, boost::asio::buffer(filename));
 
-        } catch (std::exception& e) {
-            std::cerr << "Peer::sendRemFileRequest()" << e.what() << std::endl;
+    } catch (std::exception& e) {
+        std::cerr << "Peer::sendRemFileRequest()" << e.what() << std::endl;
+    }
+}
+
+void Peer::downloadAvailableFile(std::string filename) {
+    const std::string hostAddr = P2PNode::addressFromString(m_availableFilesList[filename]);
+    const std::string hostPort = P2PNode::portFromString(m_availableFilesList[filename]);
+
+    try {
+        tcp::socket tmpSocket(m_ioService);
+        tcp::resolver::query query(hostAddr, hostPort);
+        tcp::resolver::iterator endpoint_iterator = m_resolver.resolve(query);
+
+        boost::asio::connect(tmpSocket, endpoint_iterator);
+        std::cout << "Sending download request for " << filename << " to " << hostAddr << ":" << hostPort << std::endl;
+        sendDownloadFileRequest(tmpSocket, filename);
+    } catch (std::exception& e) {
+        std::cerr << "Peer::downloadAvailableFile(): " << e.what() << std::endl;
+        throw e;
+    }
+}
+
+void Peer::sendDownloadFileRequest(tcp::socket &tmpSocket, std::string filename) {
+    // send request type
+    const char messageType = static_cast<char>(Peer::DOWNFILEREQUEST);
+    boost::asio::write(tmpSocket, boost::asio::buffer(&messageType, 1));
+    std::cout << "Send request type " << static_cast<int>(messageType) << std::endl;
+
+    // send port
+    const char portStrSize = static_cast<char>(getAcceptorPort().size());
+    boost::asio::write(tmpSocket, boost::asio::buffer(&portStrSize, 1));
+    boost::asio::write(tmpSocket, boost::asio::buffer(getAcceptorPort()));
+    std::cout << "Sent port " << getAcceptorPort() << " (size " << static_cast<size_t>(portStrSize) << ")" << std::endl;
+
+    // send file's name
+    const char filenameStrSize = static_cast<char>(filename.size());
+    boost::asio::write(tmpSocket, boost::asio::buffer(&filenameStrSize, 1));
+    boost::asio::write(tmpSocket, boost::asio::buffer(filename));
+    std::cout << "Request for " << filename << " (size " << static_cast<size_t>(filenameStrSize) << ") has been sent." << std::endl;
+
+    recvFile(tmpSocket, filename);
+    std::cout << "Finished recieving file " << filename << std::endl;
+}
+
+void Peer::handleDownloadFileRequest() {
+    // read port
+    const std::string addressString = parseAddress();
+
+    // read filename size
+    char filenameStrSize;
+    boost::asio::read(m_socket, boost::asio::buffer(&filenameStrSize, 1));
+    // read filename
+    boost::array<char, MAX_STRING_SIZE> filename;
+    boost::asio::read(m_socket, boost::asio::buffer(filename), boost::asio::transfer_exactly(static_cast<size_t>(filenameStrSize)));
+    std::string filenameString(filename.begin(), filename.begin() + static_cast<size_t>(filenameStrSize));
+
+    sendFile(filenameString);
+}
+
+void Peer::sendFile(std::string filename) {
+    std::string fullFilePath = pathFromFilename(filename);
+
+    try {
+        // open file for reading
+        std::ifstream readFile;
+        readFile.open(fullFilePath, std::ios::in | std::ios::binary);
+        if (!readFile.is_open()) {
+            std::cerr << "Unable to open file: " << fullFilePath << std::endl;
+            throw;
         }
+
+        char readBuffer[FILE_PACKET_SIZE];
+        while (readFile) {
+            readFile.read(readBuffer, FILE_PACKET_SIZE);                                        // read into buffer
+            boost::asio::write(m_socket, boost::asio::buffer(readBuffer, readFile.gcount()));   // send over socket
+        }
+        readFile.close();
+    } catch (std::exception& e) {
+        std::cerr << "Peer::sendFile(): " << e.what() << std::endl;
+        throw e;
+    }
+}
+
+void Peer::recvFile(tcp::socket &tmpSocket, std::string filename) {
+    try {
+        // open file for writing
+        std::ofstream outFile;
+        outFile.open(filename, std::ios::out | std::ios::binary);
+
+        char readBuffer[FILE_PACKET_SIZE];
+        bool reachedEOF = false;
+        while (!reachedEOF) {
+            boost::system::error_code error_code;
+            size_t bytesRead = tmpSocket.read_some(boost::asio::buffer(readBuffer, FILE_PACKET_SIZE), error_code);
+            outFile.write(readBuffer, bytesRead);
+            if (error_code == boost::asio::error::eof) reachedEOF = true;
+            else if (error_code) throw boost::system::system_error(error_code);
+        }
+        outFile.close();
+    } catch (std::exception& e) {
+        std::cerr << "Peer::recvFile(): " << e.what() << std::endl;
+        throw e;
+    }
+}
+
+std::string Peer::pathFromFilename(std::string filename) {
+    std::vector<std::string>::iterator it;
+    for (it = m_sharedFilesList.begin(); it != m_sharedFilesList.end(); ++it) {
+        boost::filesystem::path fullpath(*it);
+        if (fullpath.filename().string() == filename) return *it;
+    }
+    return "";
 }
 
 void Peer::handleAddRequest() {
