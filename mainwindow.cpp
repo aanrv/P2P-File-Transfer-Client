@@ -14,6 +14,7 @@
 #include <vector>
 #include <boost/asio.hpp>
 #include <boost/array.hpp>
+#include <boost/thread.hpp>
 
 using boost::asio::ip::tcp;
 
@@ -207,10 +208,6 @@ void MainWindow::s_remShareFile() {
 }
 
 void MainWindow::s_downloadAvailableFile() {
-    QMessageBox::information(
-                this,
-                applicationName,
-                QString(tr("You will be notified when file has finished downloading.")));
     boost::thread downloadThread(boost::bind(&MainWindow::downloadFile, this));
 }
 
@@ -233,7 +230,7 @@ void MainWindow::downloadFile() {
     }
 }
 
-void MainWindow::s_downloadStatus(QString filename, int downloadStatus) {
+void MainWindow::s_downloadStatus(const QString filename, const int downloadStatus) {
     if (downloadStatus == DOWNLOAD_START) {
         m_downloadResultMessage->setText(QString(tr("Downloading \"%1\".\nYou will be notified once download has completed.")).arg(filename));
     } else if (downloadStatus == DOWNLOAD_SUCCESS) {
