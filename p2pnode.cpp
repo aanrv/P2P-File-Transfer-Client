@@ -9,20 +9,21 @@
 
 void P2PNode::handleConnection() {
     // wait for a peer to connect
-    m_acceptor.accept(m_socket);
+    tcp::socket tmpSocket(m_ioService);
+    m_acceptor.accept(tmpSocket);
 
     // determine request type
     char requestType;
-    boost::asio::read(m_socket, boost::asio::buffer(&requestType, 1));
+    boost::asio::read(tmpSocket, boost::asio::buffer(&requestType, 1));
 
     // handle request
-    if (requestType == ADDREQUEST) handleAddRequest();
-    else if (requestType == REMREQUEST) handleRemRequest();
-    else if (requestType == ADDFILEREQUEST) handleAddFileRequest();
-    else if (requestType == REMFILEREQUEST) handleRemFileRequest();
+    if (requestType == ADDREQUEST) handleAddRequest(tmpSocket);
+    else if (requestType == REMREQUEST) handleRemRequest(tmpSocket);
+    else if (requestType == ADDFILEREQUEST) handleAddFileRequest(tmpSocket);
+    else if (requestType == REMFILEREQUEST) handleRemFileRequest(tmpSocket);
 
     // close connection after handling request
-    m_socket.close();
+    //tmpSocket.close();
 
     std::cout << "---------->\n";
     printPeers();
@@ -30,26 +31,26 @@ void P2PNode::handleConnection() {
     std::cout << "<----------" << std::endl;
 }
 
-std::string P2PNode::parseAddress() {
+std::string P2PNode::parseAddress(tcp::socket& tmpSocket) {
     // read sender's port string size
     char addressSize;
-    boost::asio::read(m_socket, boost::asio::buffer(&addressSize, 1));
+    boost::asio::read(tmpSocket, boost::asio::buffer(&addressSize, 1));
 
     // read port
     boost::array<char, MAX_STRING_SIZE> portBuffer;
-    boost::asio::read(m_socket, boost::asio::buffer(portBuffer), boost::asio::transfer_exactly(static_cast<short>(addressSize)));
+    boost::asio::read(tmpSocket, boost::asio::buffer(portBuffer), boost::asio::transfer_exactly(static_cast<short>(addressSize)));
     std::string portString(portBuffer.begin(), portBuffer.begin() + static_cast<size_t>(addressSize));
 
     // get sender's address
-    std::string addressString(m_socket.remote_endpoint().address().to_string());
+    std::string addressString(tmpSocket.remote_endpoint().address().to_string());
 
     return  addressString + ":" + portString;
 }
 
-void P2PNode::handleAddRequest() {
-    std::string addressString = parseAddress();	// parse address from socket
-    sendPeersList();                            // send list of peers
-    sendFilesList();                            // send list of files
+void P2PNode::handleAddRequest(tcp::socket& tmpSocket) {
+    std::string addressString = parseAddress(tmpSocket);	// parse address from socket
+    sendPeersList(tmpSocket);                            // send list of peers
+    sendFilesList(tmpSocket);                            // send list of files
     addPeer(addressString);                     // add connecting address to list
 }
 
@@ -58,21 +59,21 @@ void P2PNode::addPeer(std::string peer) {
     else std::cerr << peer << " alread exists in list of peers" << std::endl;
 }
 
-void P2PNode::sendPeersList() {
+void P2PNode::sendPeersList(tcp::socket& tmpSocket) {
     // send num peers
     char numPeers = static_cast<char>(m_peersList.size());
     try {
-        boost::asio::write(m_socket, boost::asio::buffer(&numPeers, 1));
+        boost::asio::write(tmpSocket, boost::asio::buffer(&numPeers, 1));
 
         // send peers
         for (std::vector<std::string>::iterator it = m_peersList.begin(); it != m_peersList.end(); ++it) {
             // send size of string
             assert(it->size() < BYTE_SIZE);
             char stringSize = static_cast<char>((*it).size());
-            boost::asio::write(m_socket, boost::asio::buffer(&stringSize, 1));
+            boost::asio::write(tmpSocket, boost::asio::buffer(&stringSize, 1));
 
             // send string
-            boost::asio::write(m_socket, boost::asio::buffer(*it));
+            boost::asio::write(tmpSocket, boost::asio::buffer(*it));
         }
     } catch (std::exception& e) {
         std::cerr << "P2PNode::sendPeersList(): " << e.what() << std::endl;
@@ -80,35 +81,35 @@ void P2PNode::sendPeersList() {
     }
 }
 
-void P2PNode::sendFilesList() {
+void P2PNode::sendFilesList(tcp::socket& tmpSocket) {
     // send num files
     char numFiles = static_cast<char>(m_availableFilesList.size());
     try {
-        boost::asio::write(m_socket, boost::asio::buffer(&numFiles, 1));
+        boost::asio::write(tmpSocket, boost::asio::buffer(&numFiles, 1));
 
         // send files and address
         for (auto it = m_availableFilesList.begin(); it != m_availableFilesList.end(); ++it) {
             // send size of filename string
             assert(it->first.size() < BYTE_SIZE);
             char stringSize = static_cast<char>(it->first.size());
-            boost::asio::write(m_socket, boost::asio::buffer(&stringSize, 1));
+            boost::asio::write(tmpSocket, boost::asio::buffer(&stringSize, 1));
             // send filename string
-            boost::asio::write(m_socket, boost::asio::buffer(it->first));
+            boost::asio::write(tmpSocket, boost::asio::buffer(it->first));
 
             // send size of address string
             assert(it->second.size() < BYTE_SIZE);
             char addrStringSize = static_cast<char>(it->second.size());
-            boost::asio::write(m_socket, boost::asio::buffer(&addrStringSize, 1));
+            boost::asio::write(tmpSocket, boost::asio::buffer(&addrStringSize, 1));
             // send address string
-            boost::asio::write(m_socket, boost::asio::buffer(it->second));
+            boost::asio::write(tmpSocket, boost::asio::buffer(it->second));
         }
     } catch (std::exception& e) {
         std::cerr << "P2PNode::sendFilesList(): " << e.what() << std::endl;
     }
 }
 
-void P2PNode::handleRemRequest() {
-    std::string addressString = parseAddress();
+void P2PNode::handleRemRequest(tcp::socket& tmpSocket) {
+    std::string addressString = parseAddress(tmpSocket);
     remPeerFiles(addressString);
     remPeer(addressString);
 }
@@ -139,17 +140,17 @@ void P2PNode::printAvailableFiles() const {
     std::cout << std::endl;
 }
 
-void P2PNode::handleRemFileRequest() {
+void P2PNode::handleRemFileRequest(tcp::socket& tmpSocket) {
     // parse address:port from acceptor socket
-    std::string addressString = parseAddress();
+    std::string addressString = parseAddress(tmpSocket);
 
     // read filename size
     char fnSize;
-    boost::asio::read(m_socket, boost::asio::buffer(&fnSize, 1));
+    boost::asio::read(tmpSocket, boost::asio::buffer(&fnSize, 1));
 
     // read filename
     boost::array<char, MAX_STRING_SIZE> filenameBuffer;
-    boost::asio::read(m_socket, boost::asio::buffer(filenameBuffer), boost::asio::transfer_exactly(static_cast<size_t>(fnSize)));
+    boost::asio::read(tmpSocket, boost::asio::buffer(filenameBuffer), boost::asio::transfer_exactly(static_cast<size_t>(fnSize)));
 
     std::string filenameString(filenameBuffer.begin(), filenameBuffer.begin() + static_cast<size_t>(fnSize));
 
@@ -165,17 +166,17 @@ const std::map<std::string, std::string>& P2PNode::getAvailableList() const {
     return m_availableFilesList;
 }
 
-void P2PNode::handleAddFileRequest() {
+void P2PNode::handleAddFileRequest(tcp::socket& tmpSocket) {
     // parse address:port from acceptor socket
-    std::string addressString = parseAddress();
+    std::string addressString = parseAddress(tmpSocket);
 
     // read filename size
     char fnSize;
-    boost::asio::read(m_socket, boost::asio::buffer(&fnSize, 1));
+    boost::asio::read(tmpSocket, boost::asio::buffer(&fnSize, 1));
 
     // read filename
     boost::array<char, MAX_STRING_SIZE> filenameBuffer;
-    boost::asio::read(m_socket, boost::asio::buffer(filenameBuffer), boost::asio::transfer_exactly(static_cast<size_t>(fnSize)));
+    boost::asio::read(tmpSocket, boost::asio::buffer(filenameBuffer), boost::asio::transfer_exactly(static_cast<size_t>(fnSize)));
 
     std::string filenameString(filenameBuffer.begin(), filenameBuffer.begin() + static_cast<size_t>(fnSize));
 

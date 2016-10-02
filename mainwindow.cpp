@@ -14,10 +14,8 @@
 #include <boost/asio.hpp>
 #include <boost/array.hpp>
 #include <boost/thread/thread.hpp>
-#include <boost/thread/mutex.hpp>
 
 using boost::asio::ip::tcp;
-boost::mutex refreshMutex;
 
 const QString applicationName("P2P Filesharing Client");
 
@@ -107,8 +105,6 @@ void MainWindow::createLayouts() {
 }
 
 void MainWindow::refreshPeerList() {
-    boost::mutex::scoped_lock lock(refreshMutex);
-
     const std::vector<std::string> peers = m_peer.getPeersList();
 
     m_peersList->clear();
@@ -129,7 +125,7 @@ void MainWindow::refreshAvailableList() {
     m_availableFilesList->clear();
     std::map<std::string, std::string> availMap = m_peer.getAvailableList();
     for(auto const &it : availMap) {
-        m_availableFilesList->addItem(QString("%1 (%2)").arg(QString::fromStdString(it.first), QString::fromStdString((it.second))));
+        m_availableFilesList->addItem(QString::fromStdString(it.first));
     }
 }
 
@@ -209,8 +205,7 @@ void MainWindow::s_remShareFile() {
 void MainWindow::s_downloadAvailableFile() {
     QList<QListWidgetItem*> selectedItems = m_availableFilesList->selectedItems();
     foreach (QListWidgetItem* item, selectedItems) {
-        std::string listString = item->text().toUtf8().constData();
-        std::string filename = listString.substr(0, listString.find(' '));
+        std::string filename = item->text().toUtf8().constData();
         try {
             QMessageBox::information(
                 this,

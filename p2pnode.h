@@ -15,7 +15,7 @@ public:
     static const unsigned long PORTMIN             = 1024;
     static const unsigned long PORTMAX             = 65535;
 
-    P2PNode(unsigned short port) : m_acceptor(m_ioService, tcp::endpoint(tcp::v4(), port)), m_socket(m_ioService) {}
+    P2PNode(unsigned short port) : m_acceptor(m_ioService, tcp::endpoint(tcp::v4(), port)) {}
 
     typedef enum _MessageType {
         ADDREQUEST,             // request remote peer to add self to list of peers
@@ -53,30 +53,29 @@ public:
     std::string getAcceptorPort() const;
 
 protected:
-    std::string parseAddress();                                             // Parses peer addr from socket, given the next format is portSize,portString
+    std::string parseAddress(tcp::socket &tmpSocket);                                             // Parses peer addr from socket, given the next format is portSize,portString
 
-    virtual void handleAddRequest();                                        // Connected peer wants to join network
-    void sendPeersList();                                                   // Send list of peers on network to the connected peer
+    virtual void handleAddRequest(tcp::socket &tmpSocket);                                        // Connected peer wants to join network
+    void sendPeersList(tcp::socket &tmpSocket);                                                   // Send list of peers on network to the connected peer
     void addPeer(std::string peer);                                         // If doesn't already exist, add peer address string to list
 
-    void handleRemRequest();                                                // Connected peer wants to leave network
+    void handleRemRequest(tcp::socket &tmpSocket);                                                // Connected peer wants to leave network
     void remPeerFiles(std::string peer);                                    // Removes all files that were made available by peer
     void remPeer(std::string peer);                                         // Remove peer address string from list
 
-    void handleAddFileRequest();                                            // Connected peer wants to share a file with network
+    void handleAddFileRequest(tcp::socket &tmpSocket);                                            // Connected peer wants to share a file with network
     void addAvailableFile(std::string filename, std::string address);       // Adds filename available for download `address`
 
-    void handleRemFileRequest();                                            // Connected peer wants to remove file it is sharing from network
+    void handleRemFileRequest(tcp::socket &tmpSocket);                                            // Connected peer wants to remove file it is sharing from network
     void remAvailableFile(std::string filename, std::string);               // Removes filename from being available
 
-    void sendFilesList();                                                   // Sends list of files available for download to connecting peer
+    void sendFilesList(tcp::socket &tmpSocket);                                                   // Sends list of files available for download to connecting peer
 
     std::string pathToFile(std::string path);                               // given path, returns filename
     std::string fileToPath(std::string file);                               // given filename, finds and returns full path from list
 
 	boost::asio::io_service m_ioService;
 	tcp::acceptor m_acceptor;
-	tcp::socket m_socket;
     std::vector<std::string> m_peersList;                                   // List of peers on network
     std::map<std::string, std::string> m_availableFilesList;                // List of files available for download by other peers
 };

@@ -49,10 +49,10 @@ private:
     void sendRemFileRequest(tcp::socket &tmpSocket, std::string filepath, std::string port);    // requests peer to remove file from their available list
     void sendDownloadFileRequest(tcp::socket &tmpSocket, std::string filename);                 // requests peer to provide file 'filename'
 
-    void handleAddRequest();                                                // handle an add request sent by another peer
-    void handleDownloadFileRequest();                                       // handle a request from peer to provide file
+    void handleAddRequest(tcp::socket &tmpSocket);                                                // handle an add request sent by another peer
+    void handleDownloadFileRequest(tcp::socket &tmpSocket);                                       // handle a request from peer to provide file
 
-    void sendFile(std::string filename);                                    // send file filename over m_socket
+    void sendFile(tcp::socket &tmpSocket, std::string filename);                                    // send file filename over connected socket
     void recvFile(tcp::socket &tmpSocket, std::string filename);            // recieve a file over tmpSocket
 
     std::string pathFromFilename(std::string filename);                     // returns the complete path from a filename in share list
