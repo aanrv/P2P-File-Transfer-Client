@@ -10,10 +10,10 @@
 #include <QToolButton>
 #include <QMessageBox>
 #include <QFileDialog>
+#include <QThread>
 #include <vector>
 #include <boost/asio.hpp>
 #include <boost/array.hpp>
-#include <boost/thread/thread.hpp>
 
 using boost::asio::ip::tcp;
 
@@ -46,10 +46,14 @@ void MainWindow::createWidgets() {
     m_remFileButton = new QPushButton(tr("Unshare File"));
     m_downloadFileButton = new QPushButton(tr("Download"));
 
+    m_downloadResultMessage = new QMessageBox(this);
+
     connect(m_connectButton, SIGNAL(clicked()), this, SLOT(s_connect()));
     connect(m_addFileButton, SIGNAL(clicked()), this, SLOT(s_addShareFile()));
     connect(m_remFileButton, SIGNAL(clicked()), this, SLOT(s_remShareFile()));
     connect(m_downloadFileButton, SIGNAL(clicked()), this, SLOT(s_downloadAvailableFile()));
+    connect(this, SIGNAL(downloadStatus(QString,int)), this, SLOT(s_downloadStatus(QString,int)));
+    connect(this, SIGNAL(updateLists()), this, SLOT(s_updateLists()));
 }
 
 void MainWindow::createLayouts() {
@@ -203,38 +207,51 @@ void MainWindow::s_remShareFile() {
 }
 
 void MainWindow::s_downloadAvailableFile() {
+    QMessageBox::information(
+                this,
+                applicationName,
+                QString(tr("You will be notified when file has finished downloading.")));
+    boost::thread downloadThread(boost::bind(&MainWindow::downloadFile, this));
+}
+
+void MainWindow::startAcceptorThread() {
+    boost::thread acceptorThread(boost::bind(&MainWindow::waitForPeers, this));
+}
+
+void MainWindow::downloadFile() {
     QList<QListWidgetItem*> selectedItems = m_availableFilesList->selectedItems();
     foreach (QListWidgetItem* item, selectedItems) {
         std::string filename = item->text().toUtf8().constData();
         try {
-            QMessageBox::information(
-                this,
-                applicationName,
-                QString(tr("You will be notified when file has finished downloading.")));
+            emit downloadStatus(QString::fromStdString(filename), DOWNLOAD_START);
             m_peer.downloadAvailableFile(filename);
-            QMessageBox::information(
-                this,
-                applicationName,
-                QString(tr("File \"%1\" has finished downloading.")).arg(QString::fromStdString(filename)));
+            emit downloadStatus(QString::fromStdString(filename), DOWNLOAD_SUCCESS);
         } catch (std::exception& e) {
             std::cerr << "MainWindow::s_downloadAvailableFile(): Download failed. " << e.what() << std::endl;
-            QMessageBox::information(
-                this,
-                applicationName,
-                QString(tr("Download failed.")));
+            emit downloadStatus(QString::fromStdString(filename), DOWNLOAD_FAILURE);
         }
     }
 }
 
-void MainWindow::startAcceptorThread() {
-    m_acceptorThread = boost::thread(boost::bind(&MainWindow::waitForPeers, this));
+void MainWindow::s_downloadStatus(QString filename, int downloadStatus) {
+    if (downloadStatus == DOWNLOAD_START) {
+        m_downloadResultMessage->setText(QString(tr("Downloading \"%1\".\nYou will be notified once download has completed.")).arg(filename));
+    } else if (downloadStatus == DOWNLOAD_SUCCESS) {
+        m_downloadResultMessage->setText(QString(tr("File \"%1\" has finished downloading.")).arg(filename));
+    } else {
+        m_downloadResultMessage->setText(QString(tr("\"%1\" download failed.")).arg(filename));
+    }
+    m_downloadResultMessage->show();
+}
+
+void MainWindow::s_updateLists() {
+    refreshPeerList();
+    refreshAvailableList();
 }
 
 void MainWindow::waitForPeers() {
     for (;;) {
         m_peer.handleConnection();
-        refreshPeerList();
-        refreshShareList();
-        refreshAvailableList();
+        emit updateLists();
     }
 }

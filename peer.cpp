@@ -11,6 +11,7 @@ void Peer::handleConnection() {
     // wait for a peer to connect
     tcp::socket tmpSocket(m_ioService);
     m_acceptor.accept(tmpSocket);
+    std::cout << "Received connection." << std::endl;
 
     // determine request type
     char requestType;
