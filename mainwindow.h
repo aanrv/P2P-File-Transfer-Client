@@ -1,17 +1,7 @@
-// 1. + - buttons for sharing files.
-// 2. Change single size buffers to chars
-// 3. Use more mutex.
-// 4. handleConnection should return connection type to avoid having to refresh everything.
-// 5. Send add/rem req functions can be shortened.
-// 6. Lots of variables, parameters, and functions should be conts.
-
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
 #include <QMainWindow>
-#include <boost/asio.hpp>
-#include <boost/thread.hpp>
-#include <boost/scoped_ptr.hpp>
 #include "peer.h"
 
 class QListWidget;
@@ -35,6 +25,7 @@ private:
         DOWNLOAD_SUCCESS,
         DOWNLOAD_FAILURE
     };
+
     Peer m_peer;
 
     QListWidget*    m_peersList;                // Displays list of peers on network
@@ -65,16 +56,16 @@ private:
     void refreshAvailableList();
 
 private slots:
-    void s_connect();                                           // Connects client to network and displays peers and files available for download
-    void s_addShareFile();                                      // Browse for a file to allow sharing it
-    void s_remShareFile();                                      // Remove file that is currently being shared
-    void s_downloadAvailableFile();                             // Download selected file
-    void s_downloadStatus(QString filename, int downloadStatus);    // Displays message box informing download success/failure
+    void s_connect();                                                           // Connects client to network and displays peers and files available for download
+    void s_addShareFile();                                                      // Browse for a file to allow sharing it
+    void s_remShareFile();                                                      // Remove file that is currently being shared
+    void s_downloadAvailableFile();                                             // Download selected file
+    void s_downloadStatus(const QString filename, const int downloadStatus);    // Displays message box informing download success/failure
     void s_updateLists();
 
 signals:
-    void downloadStatus(QString filename, int downloadStatus);  // Indicates which message box to be displayed during file download process
-    void updateLists();                                         // Emitted after handling connection, notifying main thread to update GUI
+    void downloadStatus(const QString filename, const int downloadStatus);      // Indicates which message box to be displayed during file download process
+    void updateLists();                                                         // Emitted after handling connection, notifying main thread to update GUI
 };
 
 #endif // MAINWINDOW_H

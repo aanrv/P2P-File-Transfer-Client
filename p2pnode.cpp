@@ -5,7 +5,6 @@
 #include <boost/bind.hpp>
 #include <string>
 #include <vector>
-#include <cassert>
 
 void P2PNode::handleConnection() {
     // wait for a peer to connect
@@ -54,7 +53,7 @@ void P2PNode::handleAddRequest(tcp::socket& tmpSocket) {
     addPeer(addressString);                     // add connecting address to list
 }
 
-void P2PNode::addPeer(std::string peer) {
+void P2PNode::addPeer(const std::string peer) {
     if (std::find(m_peersList.begin(), m_peersList.end(), peer) == m_peersList.end()) m_peersList.push_back(peer);
     else std::cerr << peer << " alread exists in list of peers" << std::endl;
 }
@@ -68,7 +67,8 @@ void P2PNode::sendPeersList(tcp::socket& tmpSocket) {
         // send peers
         for (std::vector<std::string>::iterator it = m_peersList.begin(); it != m_peersList.end(); ++it) {
             // send size of string
-            assert(it->size() < BYTE_SIZE);
+
+            if (it->size() >= BYTE_SIZE) throw;
             char stringSize = static_cast<char>((*it).size());
             boost::asio::write(tmpSocket, boost::asio::buffer(&stringSize, 1));
 
@@ -114,30 +114,15 @@ void P2PNode::handleRemRequest(tcp::socket& tmpSocket) {
     remPeer(addressString);
 }
 
-void P2PNode::remPeer(std::string peer) {
-    m_peersList.erase(std::remove(m_peersList.begin(), m_peersList.end(), peer), m_peersList.end());
-}
-
-const std::vector<std::string>& P2PNode::getPeersList() const {
-    return m_peersList;
-}
-
-std::string P2PNode::getAcceptorPort() const {
-    return std::to_string(m_acceptor.local_endpoint().port());
-}
-
-void P2PNode::printPeers() const {
-    std::cout << "Peers List:\n";
-    for (std::vector<std::string>::const_iterator it = m_peersList.begin(); it != m_peersList.end(); ++it) std::cout << *it << std::endl;
-    std::cout << std::endl;
-}
-
-void P2PNode::printAvailableFiles() const {
-    std::cout << "Available Files:\n";
-    for (auto const &it : m_availableFilesList) {
-        std::cout << it.first << " (" << it.second << ")" << std::endl;
+void P2PNode::remPeerFiles(const std::string peer) {
+    for (auto it = m_availableFilesList.begin(); it != m_availableFilesList.end(); ) {
+        if (it->second == peer) m_availableFilesList.erase(it);
+        else ++it;
     }
-    std::cout << std::endl;
+}
+
+void P2PNode::remPeer(const std::string peer) {
+    m_peersList.erase(std::remove(m_peersList.begin(), m_peersList.end(), peer), m_peersList.end());
 }
 
 void P2PNode::handleRemFileRequest(tcp::socket& tmpSocket) {
@@ -154,16 +139,12 @@ void P2PNode::handleRemFileRequest(tcp::socket& tmpSocket) {
 
     std::string filenameString(filenameBuffer.begin(), filenameBuffer.begin() + static_cast<size_t>(fnSize));
 
-    remAvailableFile(filenameString, addressString);
+    remAvailableFile(filenameString);
 }
 
-void P2PNode::remAvailableFile(std::string filename, std::string) {
+void P2PNode::remAvailableFile(const std::string filename) {
     m_availableFilesList.erase(filename);
     printAvailableFiles();
-}
-
-const std::map<std::string, std::string>& P2PNode::getAvailableList() const {
-    return m_availableFilesList;
 }
 
 void P2PNode::handleAddFileRequest(tcp::socket& tmpSocket) {
@@ -183,14 +164,33 @@ void P2PNode::handleAddFileRequest(tcp::socket& tmpSocket) {
     addAvailableFile(filenameString, addressString);
 }
 
-void P2PNode::addAvailableFile(std::string filename, std::string address) {
+void P2PNode::addAvailableFile(const std::string filename, const std::string address) {
     m_availableFilesList[filename] = address;
     printAvailableFiles();
 }
 
-void P2PNode::remPeerFiles(std::string peer) {
-    for (auto it = m_availableFilesList.begin(); it != m_availableFilesList.end(); ) {
-        if (it->second == peer) m_availableFilesList.erase(it);
-        else ++it;
+const std::vector<std::string>& P2PNode::getPeersList() const {
+    return m_peersList;
+}
+
+const std::string P2PNode::getAcceptorPort() const {
+    return std::to_string(m_acceptor.local_endpoint().port());
+}
+
+const std::map<std::string, std::string>& P2PNode::getAvailableList() const {
+    return m_availableFilesList;
+}
+
+void P2PNode::printPeers() const {
+    std::cout << "Peers List:\n";
+    for (std::vector<std::string>::const_iterator it = m_peersList.begin(); it != m_peersList.end(); ++it) std::cout << *it << std::endl;
+    std::cout << std::endl;
+}
+
+void P2PNode::printAvailableFiles() const {
+    std::cout << "Available Files:\n";
+    for (auto const &it : m_availableFilesList) {
+        std::cout << it.first << " (" << it.second << ")" << std::endl;
     }
+    std::cout << std::endl;
 }

@@ -4,16 +4,12 @@
 #include <QHBoxLayout>
 #include <QVBoxLayout>
 #include <QListWidget>
-#include <QLineEdit>
 #include <QLabel>
+#include <QLineEdit>
 #include <QPushButton>
 #include <QToolButton>
 #include <QMessageBox>
 #include <QFileDialog>
-#include <QThread>
-#include <vector>
-#include <boost/asio.hpp>
-#include <boost/array.hpp>
 #include <boost/thread.hpp>
 
 using boost::asio::ip::tcp;
@@ -53,6 +49,8 @@ void MainWindow::createWidgets() {
     connect(m_addFileButton, SIGNAL(clicked()), this, SLOT(s_addShareFile()));
     connect(m_remFileButton, SIGNAL(clicked()), this, SLOT(s_remShareFile()));
     connect(m_downloadFileButton, SIGNAL(clicked()), this, SLOT(s_downloadAvailableFile()));
+    connect(m_addrBar, SIGNAL(returnPressed()), this, SLOT(s_connect()));
+    connect(m_portBar, SIGNAL(returnPressed()), this, SLOT(s_connect()));
     connect(this, SIGNAL(downloadStatus(QString,int)), this, SLOT(s_downloadStatus(QString,int)));
     connect(this, SIGNAL(updateLists()), this, SLOT(s_updateLists()));
 }
@@ -134,6 +132,32 @@ void MainWindow::refreshAvailableList() {
     }
 }
 
+void MainWindow::startAcceptorThread() {
+    boost::thread acceptorThread(boost::bind(&MainWindow::waitForPeers, this));
+}
+
+void MainWindow::waitForPeers() {
+    for (;;) {
+        m_peer.handleConnection();
+        emit updateLists();
+    }
+}
+
+void MainWindow::downloadFile() {
+    QList<QListWidgetItem*> selectedItems = m_availableFilesList->selectedItems();
+    foreach (QListWidgetItem* item, selectedItems) {
+        std::string filename = item->text().toUtf8().constData();
+        try {
+            emit downloadStatus(QString::fromStdString(filename), DOWNLOAD_START);
+            m_peer.downloadAvailableFile(filename);
+            emit downloadStatus(QString::fromStdString(filename), DOWNLOAD_SUCCESS);
+        } catch (std::exception& e) {
+            std::cerr << "MainWindow::s_downloadAvailableFile(): Download failed. " << e.what() << std::endl;
+            emit downloadStatus(QString::fromStdString(filename), DOWNLOAD_FAILURE);
+        }
+    }
+}
+
 void MainWindow::s_connect() {
     try {
         m_peer.setConnectionManagerAddress(m_addrBar->text().toUtf8().constData());
@@ -211,25 +235,6 @@ void MainWindow::s_downloadAvailableFile() {
     boost::thread downloadThread(boost::bind(&MainWindow::downloadFile, this));
 }
 
-void MainWindow::startAcceptorThread() {
-    boost::thread acceptorThread(boost::bind(&MainWindow::waitForPeers, this));
-}
-
-void MainWindow::downloadFile() {
-    QList<QListWidgetItem*> selectedItems = m_availableFilesList->selectedItems();
-    foreach (QListWidgetItem* item, selectedItems) {
-        std::string filename = item->text().toUtf8().constData();
-        try {
-            emit downloadStatus(QString::fromStdString(filename), DOWNLOAD_START);
-            m_peer.downloadAvailableFile(filename);
-            emit downloadStatus(QString::fromStdString(filename), DOWNLOAD_SUCCESS);
-        } catch (std::exception& e) {
-            std::cerr << "MainWindow::s_downloadAvailableFile(): Download failed. " << e.what() << std::endl;
-            emit downloadStatus(QString::fromStdString(filename), DOWNLOAD_FAILURE);
-        }
-    }
-}
-
 void MainWindow::s_downloadStatus(const QString filename, const int downloadStatus) {
     if (downloadStatus == DOWNLOAD_START) {
         m_downloadResultMessage->setText(QString(tr("Downloading \"%1\".\nYou will be notified once download has completed.")).arg(filename));
@@ -244,11 +249,4 @@ void MainWindow::s_downloadStatus(const QString filename, const int downloadStat
 void MainWindow::s_updateLists() {
     refreshPeerList();
     refreshAvailableList();
-}
-
-void MainWindow::waitForPeers() {
-    for (;;) {
-        m_peer.handleConnection();
-        emit updateLists();
-    }
 }

@@ -2,17 +2,13 @@
 #define PEER_H
 
 #include "p2pnode.h"
-#include <boost/asio.hpp>
-#include <boost/array.hpp>
-#include <boost/tuple/tuple.hpp>
 #include <string>
-#include <map>
 
 class Peer : public P2PNode
 {
 public:
 
-    const size_t FILE_PACKET_SIZE = 1024;
+    static const size_t FILE_PACKET_SIZE = 1024;
 
     typedef enum _MessageType {
         DOWNFILEREQUEST = REMFILEREQUEST + 1                            // request to recieve a file for download
@@ -49,19 +45,19 @@ private:
     void sendRemFileRequest(tcp::socket &tmpSocket, const std::string filepath, const std::string port);    // requests peer to remove file from their available list
     void sendDownloadFileRequest(tcp::socket &tmpSocket, const std::string filename);                       // requests peer to provide file 'filename'
 
-    void handleAddRequest(tcp::socket &tmpSocket);                      // handle an add request sent by another peer
-    void handleDownloadFileRequest(boost::shared_ptr<tcp::socket> tmpSocketPtr);             // handle a request from peer to provide file
+    void handleAddRequest(tcp::socket &tmpSocket);                                          // handle an add request sent by another peer
+    void handleDownloadFileRequest(boost::shared_ptr<tcp::socket> tmpSocketPtr);            // handle a request from peer to provide file
 
-    void sendFile(tcp::socket &tmpSocket, const std::string filename);  // send file filename over connected socket
-    void recvFile(tcp::socket &tmpSocket, const std::string filename);  // recieve a file over tmpSocket
+    void sendFile(tcp::socket &tmpSocket, const std::string filename);                      // send file filename over connected socket
+    void recvFile(tcp::socket &tmpSocket, const std::string filename);                      // recieve a file over tmpSocket
 
-    std::string pathFromFilename(const std::string filename);           // returns the complete path from a filename in share list
+    std::string pathFromFilename(const std::string filename);                               // returns the complete path from a filename in share list
 
     std::string m_connectionManagerAddress;
     std::string m_connectionManagerPort;
 
     tcp::resolver m_resolver;
-    std::vector<std::string> m_sharedFilesList;                         // list of files you are sharing
+    std::vector<std::string> m_sharedFilesList;                                             // list of files you are sharing
 };
 
 #endif // PEER_H
