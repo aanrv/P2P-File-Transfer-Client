@@ -14,6 +14,7 @@ TEMPLATE = app
 QMAKE_CXXFLAGS += -Wall \
     -Wextra \
     -Werror \
+    -pedantic \
     -std=c++11
 
 LIBS += -lboost_system \

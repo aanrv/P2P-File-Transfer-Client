@@ -30,7 +30,7 @@ void MainWindow::createWidgets() {
     m_availableFilesList = new QListWidget();
     m_sharedFilesList = new QListWidget();
     m_addrBar = new QLineEdit();
-    m_addrBar->setPlaceholderText(tr("Server Address"));
+    m_addrBar->setPlaceholderText(tr("Connection Manager Address"));
     m_portBar = new QLineEdit();
     m_portBar->setPlaceholderText(tr("Connection Manager Port"));
     m_connectButton = new QPushButton(tr("Connect"));
@@ -40,7 +40,7 @@ void MainWindow::createWidgets() {
     m_searchButton = new QToolButton();
     m_searchButton->setIcon(style()->standardIcon(QStyle::SP_FileDialogContentsView));
     m_addFileButton = new QPushButton(tr("Share a File"));
-    m_remFileButton = new QPushButton(tr("Unshare File"));
+    m_remFileButton = new QPushButton(tr("Unshare a File"));
     m_downloadFileButton = new QPushButton(tr("Download"));
 
     m_downloadResultMessage = new QMessageBox(this);
