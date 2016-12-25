@@ -2,7 +2,7 @@
 
 An application that uses peer-to-peer architecture to transfer files among peers on the network. Simply for learning purposes.
 
-![Initial](img/screenshot0.png) ![Connected](img/screenshot1.png)
+![Initial](img/screenshot1.png) ![Connected](img/screenshot0.png)
 
 # Dependencies
 
