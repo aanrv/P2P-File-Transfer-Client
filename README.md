@@ -11,7 +11,7 @@ An application that uses peer-to-peer architecture to transfer files among peers
 # Installation
 
 - Client: Simply open the `.pro` file in Qt Creator and build for minimum hassle.
-- Connection Manager: `g++ -std=c++11 connectionmanager.cpp p2pnode.cpp -lboost_system -o connectionmanager`
+- Connection Manager: `g++ -std=c++11 connectionmanager.cpp p2pnode.cpp -o connectionmanager -lboost_system`
 
 # Usage
 
