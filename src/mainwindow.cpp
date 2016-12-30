@@ -45,6 +45,11 @@ void MainWindow::createWidgets() {
 
     m_downloadResultMessage = new QMessageBox(this);
 
+    // disallow add/rem/download files until connected to network
+    m_addFileButton->setEnabled(false);
+    m_remFileButton->setEnabled(false);
+    m_downloadFileButton->setEnabled(false);
+
     connect(m_connectButton, SIGNAL(clicked()), this, SLOT(s_connect()));
     connect(m_addFileButton, SIGNAL(clicked()), this, SLOT(s_addShareFile()));
     connect(m_remFileButton, SIGNAL(clicked()), this, SLOT(s_remShareFile()));
@@ -167,6 +172,11 @@ void MainWindow::s_connect() {
         m_connectButton->setEnabled(false);     // disable ablity to reconnect
         m_addrBar->setEnabled(false);
         m_portBar->setEnabled(false);
+
+        m_addFileButton->setEnabled(true);
+        m_remFileButton->setEnabled(true);
+        m_downloadFileButton->setEnabled(true);
+
         refreshPeerList();
         refreshAvailableList();
 
