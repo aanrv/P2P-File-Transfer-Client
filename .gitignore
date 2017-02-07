@@ -1,0 +1,10 @@
+src/*.pro.user
+src/*.o
+src/*.log
+src/*.supp
+src/*.stash
+src/P2P-Filesharing-Client
+src/a.out
+src/connectionmanager
+build-P2P-*
+

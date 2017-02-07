@@ -116,7 +116,7 @@ void P2PNode::handleRemRequest(tcp::socket& tmpSocket) {
 
 void P2PNode::remPeerFiles(const std::string peer) {
     for (auto it = m_availableFilesList.begin(); it != m_availableFilesList.end(); ) {
-        if (it->second == peer) m_availableFilesList.erase(it);
+        if (it->second == peer) it = m_availableFilesList.erase(it);
         else ++it;
     }
 }

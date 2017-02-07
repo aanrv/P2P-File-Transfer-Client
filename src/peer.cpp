@@ -225,7 +225,6 @@ void Peer::addShareFile(const std::string filepath) {
         sendAddFileRequest(tmpSocket, filename, getAcceptorPort());
     } catch (std::exception& e) {
         std::cerr << "Peer::addShareFile(): Unable to connect to connection manager. " << e.what() << std::endl;
-        throw e;
     }
     // send add file requests to peers
     for (std::vector<std::string>::const_iterator it = m_peersList.begin(); it != m_peersList.end(); ++it) {
@@ -291,7 +290,6 @@ void Peer::remShareFile(const std::string filepath) {
         sendRemFileRequest(tmpSocket, filename, getAcceptorPort());
     } catch (std::exception& e) {
         std::cerr << "Peer::remShareFile(): Unable to connect to connection manager. " << e.what() << std::endl;
-        throw e;
     }
     // send rem file requests to peers
     for (std::vector<std::string>::const_iterator it = m_peersList.begin(); it != m_peersList.end(); ++it) {
