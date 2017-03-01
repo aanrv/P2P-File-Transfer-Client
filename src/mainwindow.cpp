@@ -14,7 +14,7 @@
 
 using boost::asio::ip::tcp;
 
-const QString applicationName("P2P Filesharing Client");
+const QString applicationName("P2P File Transfer Client");
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     createWidgets();
